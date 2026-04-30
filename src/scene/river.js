@@ -1,15 +1,20 @@
 import * as THREE from 'three'
 
 // Shared river path data — used by both River.jsx (rendering) and
-// GrassField.jsx (carving a no-grass channel).
+// GrassField.jsx (carving a no-grass channel). Path now meanders
+// further back, threading between the pine trees so it reads as
+// continuing into the distance instead of stopping at the foreground.
 export const RIVER_POINTS = [
-  new THREE.Vector3(-7,  0.08,  6),
-  new THREE.Vector3(-3,  0.08,  3.2),
-  new THREE.Vector3(-1,  0.08,  0.5),
-  new THREE.Vector3( 1.5, 0.08, -2),
-  new THREE.Vector3( 3.5, 0.08, -5),
-  new THREE.Vector3( 5,  0.08, -9),
-  new THREE.Vector3( 6.5, 0.08, -13),
+  new THREE.Vector3(-7,   0.08,   6),
+  new THREE.Vector3(-3,   0.08,   3.2),
+  new THREE.Vector3(-1,   0.08,   0.5),
+  new THREE.Vector3( 1.5, 0.08,  -2),
+  new THREE.Vector3( 3.5, 0.08,  -5),
+  new THREE.Vector3( 4.0, 0.08,  -8.5),
+  new THREE.Vector3( 2.0, 0.08, -11),
+  new THREE.Vector3(-0.5, 0.08, -14),
+  new THREE.Vector3(-3.5, 0.08, -16.5),
+  new THREE.Vector3(-6,   0.08, -19),
 ]
 
 export const RIVER_WIDTH = 1.6

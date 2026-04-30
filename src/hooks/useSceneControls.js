@@ -64,8 +64,8 @@ export function usePathControls() {
 export function useFogControls() {
   return useControls('Atmosphere', {
     fogColor: { value: '#f4ebd9', label: 'fog tint' },
-    fogNear: { value: 7, min: 1, max: 30, step: 0.5, label: 'fog near' },
-    fogFar: { value: 22, min: 5, max: 50, step: 0.5, label: 'fog far' },
+    fogNear: { value: 9, min: 1, max: 40, step: 0.5, label: 'fog near' },
+    fogFar: { value: 32, min: 5, max: 60, step: 0.5, label: 'fog far' },
   })
 }
 
