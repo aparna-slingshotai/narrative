@@ -9,9 +9,11 @@ export const grassVertexShader = /* glsl */ `
   uniform float uWindAmplitude;
 
   attribute vec3 offset;
-  attribute float scale;
+  attribute float heightScale;
+  attribute float widthScale;
   attribute float phase;
   attribute float rotation;
+  attribute float lean;
   attribute float tint;
 
   varying float vHeight;
@@ -25,17 +27,27 @@ export const grassVertexShader = /* glsl */ `
     return vec3(c * p.x + s * p.z, p.y, -s * p.x + c * p.z);
   }
 
+  vec3 rotateX(vec3 p, float a) {
+    float c = cos(a), s = sin(a);
+    return vec3(p.x, c * p.y - s * p.z, s * p.y + c * p.z);
+  }
+
   void main() {
     float h = uv.y;
     vec3 pos = position;
 
-    // wind sway
+    // non-uniform scale: width independent of height
+    pos.x *= widthScale;
+    pos.y *= heightScale;
+    pos.z *= widthScale;
+
+    // wind sway, increases with height (cubic so tip moves most)
     float t = uTime * uWindSpeed;
     float windPhase = t + offset.x * 0.4 + offset.z * 0.25 + phase;
     vec2 windDir = vec2(sin(windPhase), cos(windPhase * 0.8));
     float windCurve = h * h * h;
-    pos.x += windDir.x * uWindAmplitude * windCurve;
-    pos.z += windDir.y * uWindAmplitude * windCurve * 0.6;
+    pos.x += windDir.x * uWindAmplitude * windCurve * heightScale;
+    pos.z += windDir.y * uWindAmplitude * windCurve * 0.6 * heightScale;
 
     // accumulate touch bend from trail
     vec2 totalBend = vec2(0.0);
@@ -56,11 +68,11 @@ export const grassVertexShader = /* glsl */ `
     }
     float bendAmt = clamp(totalForce * uTouchStrength, 0.0, 1.0);
     vec2 bendDir = length(totalBend) > 0.0001 ? normalize(totalBend) : vec2(0.0);
-    // gentler bend — half the multiplier of before, no y-pull
-    pos.xz += bendDir * bendAmt * windCurve * 0.5;
+    pos.xz += bendDir * bendAmt * windCurve * 0.5 * heightScale;
     vTouchInfluence = maxFalloff;
 
-    pos *= scale;
+    // per-blade lean (tilt around X), scaled by height so taller blades arc more
+    pos = rotateX(pos, lean * h);
     pos = rotateY(pos, rotation);
     pos += offset;
 
@@ -76,6 +88,10 @@ export const grassVertexShader = /* glsl */ `
 
 export const grassFragmentShader = /* glsl */ `
   uniform float uTouchHighlight;
+  uniform vec3 uColorBase;
+  uniform vec3 uColorMid;
+  uniform vec3 uColorTip;
+  uniform float uTintAmount;
   uniform vec3 uFogColor;
   uniform float uFogNear;
   uniform float uFogFar;
@@ -87,22 +103,18 @@ export const grassFragmentShader = /* glsl */ `
   varying float vCameraDist;
 
   void main() {
-    vec3 baseColor = vec3(0.16, 0.30, 0.10);
-    vec3 midColor  = vec3(0.26, 0.42, 0.14);
-    vec3 tipColor  = vec3(0.42, 0.58, 0.22);
+    vec3 color = mix(uColorBase, uColorMid, smoothstep(0.0, 0.55, vHeight));
+    color = mix(color, uColorTip, smoothstep(0.55, 1.0, vHeight));
 
-    vec3 color = mix(baseColor, midColor, smoothstep(0.0, 0.55, vHeight));
-    color = mix(color, tipColor, smoothstep(0.55, 1.0, vHeight));
-
-    color.r += vTint * 0.025;
-    color.g += vTint * 0.015;
-    color.b -= vTint * 0.02;
+    // per-blade hue jitter — controllable amount
+    color.r += vTint * 0.06 * uTintAmount;
+    color.g += vTint * 0.04 * uTintAmount;
+    color.b -= vTint * 0.05 * uTintAmount;
 
     color *= mix(0.7, 1.0, vAo);
 
     color += vec3(0.18, 0.22, 0.14) * vTouchInfluence * uTouchHighlight;
 
-    // distance fog so the grass field fades into the sky/horizon
     float fogAmt = smoothstep(uFogNear, uFogFar, vCameraDist);
     color = mix(color, uFogColor, fogAmt);
 

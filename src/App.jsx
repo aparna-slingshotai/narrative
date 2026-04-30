@@ -4,6 +4,7 @@ import * as THREE from 'three'
 import { Leva } from 'leva'
 import Scene from './components/Scene'
 import PostFx from './components/PostFx'
+import WhiteVignette from './components/WhiteVignette'
 import { TouchProvider } from './hooks/useTouch'
 
 export default function App() {
@@ -28,6 +29,7 @@ export default function App() {
             <PostFx />
           </Suspense>
         </Canvas>
+        <WhiteVignette />
       </TouchProvider>
     </>
   )
