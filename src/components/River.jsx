@@ -53,11 +53,14 @@ export default function River() {
 
   const ctrl = useControls('River', {
     enabled:    { value: true, label: 'enabled' },
-    waterColor: { value: '#6a9bc8', label: 'water' },
-    highlight:  { value: '#dceaf6', label: 'highlight' },
-    bankColor:  { value: '#c79a7a', label: 'bank' },
-    width:      { value: 1.6, min: 0.4, max: 5, step: 0.1 },
-    bankWidth:  { value: 0.8, min: 0,   max: 3, step: 0.1, label: 'bank width' },
+    waterColor: { value: '#7ea8cf', label: 'water' },
+    highlight:  { value: '#e8f0f8', label: 'highlight' },
+    waterShadow:{ value: '#4d7ba0', label: 'water shadow' },
+    bankColor:  { value: '#d3b094', label: 'bank' },
+    bankWarm:   { value: '#dca0a0', label: 'bank warm' },
+    grassTint:  { value: '#88a854', label: 'bank grass tint' },
+    width:      { value: 1.5, min: 0.4, max: 5, step: 0.1 },
+    bankWidth:  { value: 0.5, min: 0,   max: 3, step: 0.1, label: 'bank width' },
   })
 
   // rebuild geometry only when widths change
@@ -75,6 +78,7 @@ export default function River() {
       uTime: { value: 0 },
       uWaterColor: { value: new THREE.Color(ctrl.waterColor) },
       uHighlight: { value: new THREE.Color(ctrl.highlight) },
+      uShadow: { value: new THREE.Color(ctrl.waterShadow) },
       uFogColor: { value: new THREE.Color(fog.fogColor) },
       uFogNear: { value: fog.fogNear },
       uFogFar: { value: fog.fogFar },
@@ -84,6 +88,8 @@ export default function River() {
   const bankUniforms = useMemo(
     () => ({
       uBankColor: { value: new THREE.Color(ctrl.bankColor) },
+      uBankWarm: { value: new THREE.Color(ctrl.bankWarm) },
+      uGrassTint: { value: new THREE.Color(ctrl.grassTint) },
       uFogColor: { value: new THREE.Color(fog.fogColor) },
       uFogNear: { value: fog.fogNear },
       uFogFar: { value: fog.fogFar },
@@ -97,6 +103,7 @@ export default function River() {
       u.uTime.value += delta
       u.uWaterColor.value.set(ctrl.waterColor)
       u.uHighlight.value.set(ctrl.highlight)
+      u.uShadow.value.set(ctrl.waterShadow)
       u.uFogColor.value.set(fog.fogColor)
       u.uFogNear.value = fog.fogNear
       u.uFogFar.value = fog.fogFar
@@ -104,6 +111,8 @@ export default function River() {
     if (bankRef.current) {
       const u = bankRef.current.uniforms
       u.uBankColor.value.set(ctrl.bankColor)
+      u.uBankWarm.value.set(ctrl.bankWarm)
+      u.uGrassTint.value.set(ctrl.grassTint)
       u.uFogColor.value.set(fog.fogColor)
       u.uFogNear.value = fog.fogNear
       u.uFogFar.value = fog.fogFar

@@ -71,11 +71,11 @@ export default function GrassField() {
     const leans = new Float32Array(BLADE_COUNT)
     const tints = new Float32Array(BLADE_COUNT)
 
-    // Carve a river-shaped exclusion zone — blades inside the channel get
-    // their height squashed to 0 so they don't render. Faster than
-    // generating-and-rejecting which would leave a sparse field.
-    const exclusionRadiusSq =
-      ((RIVER_WIDTH * 0.5 + RIVER_BANK_WIDTH * 0.6) ** 2)
+    // Probabilistic river exclusion — blades closer to the river get
+    // higher rejection probability, fading to 0 a little beyond the bank.
+    // Smooth fade avoids the hard sandy edge the previous binary cut left.
+    const HARD_EXCLUSION = RIVER_WIDTH * 0.5            // 100% reject inside the water itself
+    const SOFT_FADE = HARD_EXCLUSION + RIVER_BANK_WIDTH * 0.4 // density fades up to here
 
     let placed = 0
     let attempts = 0
@@ -84,11 +84,20 @@ export default function GrassField() {
       const r = Math.random()
       const x = (Math.random() - 0.5) * FIELD_WIDTH
       const z = (1 - r * r) * -FIELD_DEPTH + 2.5
-      if (distanceToRiverSq(x, z) < exclusionRadiusSq) continue
+      const distSq = distanceToRiverSq(x, z)
+      const dist = Math.sqrt(distSq)
+      if (dist < HARD_EXCLUSION) continue
+      if (dist < SOFT_FADE) {
+        const t = (dist - HARD_EXCLUSION) / (SOFT_FADE - HARD_EXCLUSION) // 0 at water edge → 1 at full grass
+        // probability of acceptance grows quadratically with t
+        if (Math.random() > t * t) continue
+      }
       offsets[placed * 3] = x
       offsets[placed * 3 + 1] = 0
       offsets[placed * 3 + 2] = z
       heights[placed] = sampleHeight()
+      // slightly shorter blades near the bank — riparian transition
+      if (dist < SOFT_FADE) heights[placed] *= 0.6 + 0.4 * ((dist - HARD_EXCLUSION) / (SOFT_FADE - HARD_EXCLUSION))
       widths[placed] = 0.7 + Math.random() * 0.9
       phases[placed] = Math.random() * Math.PI * 2
       rotations[placed] = Math.random() * Math.PI * 2
@@ -96,7 +105,6 @@ export default function GrassField() {
       tints[placed] = (Math.random() - 0.5) * 2
       placed++
     }
-    // any remaining slots get hidden far away (height 0)
     for (let i = placed; i < BLADE_COUNT; i++) heights[i] = 0
 
     geo.setAttribute('offset', new THREE.InstancedBufferAttribute(offsets, 3))
