@@ -6,10 +6,21 @@ const wrapperStyle = {
   pointerEvents: 'none',
   display: 'flex',
   flexDirection: 'column',
+  alignItems: 'center',
   justifyContent: 'space-between',
   padding: '64px 20px 40px',
   zIndex: 2,
   fontFamily: 'system-ui, -apple-system, "Segoe UI", sans-serif',
+}
+
+// Constrain content to a phone-sized column so layout matches mobile on
+// desktop too.
+const innerColumnStyle = {
+  width: '100%',
+  maxWidth: 420,
+  display: 'flex',
+  flexDirection: 'column',
+  alignItems: 'stretch',
 }
 
 const headerStyle = {
@@ -132,32 +143,36 @@ export default function TextOverlay() {
 
   return (
     <div style={wrapperStyle}>
-      {ctrl.showHeader && (
-        <h1 style={headerStyle}>
-          {ctrl.headerText.split('\n').map((line, i) => (
-            <div key={i}>{line}</div>
-          ))}
-        </h1>
-      )}
+      <div style={innerColumnStyle}>
+        {ctrl.showHeader && (
+          <h1 style={headerStyle}>
+            {ctrl.headerText.split('\n').map((line, i) => (
+              <div key={i}>{line}</div>
+            ))}
+          </h1>
+        )}
+      </div>
       <div style={{ flex: 1 }} />
-      {ctas.length > 0 && (
-        <div style={ctas.length === 1 ? ctaSingleStyle : ctaGridStyle}>
-          {ctas.map((cta, i) => (
-            <button
-              key={i}
-              style={cardStyle}
-              onClick={() => console.log('CTA tapped:', cta.text)}
-            >
-              {cta.icon && (
-                <span className="material-symbols-rounded" style={iconStyle}>
-                  {cta.icon}
-                </span>
-              )}
-              <span>{cta.text}</span>
-            </button>
-          ))}
-        </div>
-      )}
+      <div style={innerColumnStyle}>
+        {ctas.length > 0 && (
+          <div style={ctas.length === 1 ? ctaSingleStyle : ctaGridStyle}>
+            {ctas.map((cta, i) => (
+              <button
+                key={i}
+                style={cardStyle}
+                onClick={() => console.log('CTA tapped:', cta.text)}
+              >
+                {cta.icon && (
+                  <span className="material-symbols-rounded" style={iconStyle}>
+                    {cta.icon}
+                  </span>
+                )}
+                <span>{cta.text}</span>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   )
 }
