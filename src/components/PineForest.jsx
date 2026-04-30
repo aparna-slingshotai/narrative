@@ -1,60 +1,159 @@
-import { useMemo, useRef } from 'react'
+import { useMemo, useRef, useEffect } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import {
-  pineVertexShader,
-  pineFragmentShader,
+  frondVertexShader,
+  frondFragmentShader,
   trunkVertexShader,
   trunkFragmentShader,
 } from '../shaders/pine'
 import { useWindControls, useFogControls } from '../hooks/useSceneControls'
 import { useControls, folder } from 'leva'
 
-// Single procedural pine: trunk + 4 stacked cones (Christmas-tree style).
-// Sized by `scale`, colored by passed materials.
-function Pine({ position, scale = 1, rotationY = 0, leanZ = 0, foliageMaterial, trunkMaterial }) {
-  const trunkHeight = 1.2 * scale
-  const trunkRadius = 0.06 * scale
+const FRONDS_PER_TREE = 180
+const FROND_LAYERS = 9
 
-  // 4 cone layers, each smaller than the one below
-  const cones = []
-  const layerCount = 4
-  const baseY = trunkHeight * 0.55 * scale  // foliage starts partway up the trunk
-  const layerSpacing = 0.55 * scale
-  const baseRadius = 0.55 * scale
-  for (let i = 0; i < layerCount; i++) {
-    const t = i / (layerCount - 1)         // 0 at bottom, 1 at top
-    const r = baseRadius * (1 - t * 0.6)    // taper inward
-    const h = layerSpacing * (1.5 - t * 0.3)
-    const y = baseY + i * layerSpacing
-    cones.push({ y, r, h })
+// A single tapered, drooping needle frond. Lies along +X axis with the
+// tip drooping down -Y, so when an instance is rotated around Y the
+// frond points outward and down from the trunk.
+function createFrondGeometry() {
+  const geo = new THREE.BufferGeometry()
+  const verts = []
+  const uvs = []
+  const indices = []
+  const segments = 5
+  const length = 1.0
+  const baseWidth = 0.10
+  for (let i = 0; i <= segments; i++) {
+    const t = i / segments
+    const w = baseWidth * (1 - Math.pow(t, 1.4)) // taper toward tip
+    const x = t * length
+    // baked downward droop on Y, more pronounced near the tip
+    const y = -Math.pow(t, 2) * 0.32
+    verts.push(x, y, -w)
+    verts.push(x, y, w)
+    uvs.push(t, 0)
+    uvs.push(t, 1)
+  }
+  for (let i = 0; i < segments; i++) {
+    const a = i * 2
+    indices.push(a, a + 1, a + 2)
+    indices.push(a + 2, a + 1, a + 3)
+  }
+  geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(verts), 3))
+  geo.setAttribute('uv', new THREE.BufferAttribute(new Float32Array(uvs), 2))
+  geo.setIndex(indices)
+  geo.computeVertexNormals()
+  return geo
+}
+
+const baseFrondGeometry = createFrondGeometry()
+
+// Generate per-instance matrices in distinct vertical layers so the tree
+// reads as tiered branches (like a fir) rather than a uniform cloud.
+// Bottom layers = many wider drooping fronds. Top = fewer smaller ones.
+// All fronds tilt downward to droop.
+function generateFrondMatrices(treeHeight, count, layers) {
+  const matrices = []
+  const tmpPos = new THREE.Vector3()
+  const tmpQuat = new THREE.Quaternion()
+  const tmpScale = new THREE.Vector3()
+  const tmpEuler = new THREE.Euler()
+
+  // distribute total count across layers — more fronds at the bottom
+  const layerCounts = []
+  let totalWeight = 0
+  for (let l = 0; l < layers; l++) {
+    const w = 1 + (layers - l - 1) * 0.4 // bottom layers get larger weight
+    layerCounts.push(w)
+    totalWeight += w
+  }
+  for (let l = 0; l < layers; l++) {
+    layerCounts[l] = Math.round((layerCounts[l] / totalWeight) * count)
   }
 
+  for (let l = 0; l < layers; l++) {
+    const layerT = l / (layers - 1) // 0 at bottom, 1 at top
+    // height: span 0.18 to 1.0 of trunk so fronds extend to the very tip
+    const baseHeight = (0.18 + layerT * 0.82) * treeHeight
+    const heightJitter = 0.05 * treeHeight
+    // size: bottom layers are larger, taper toward the top
+    const baseSize = 1.05 - layerT * 0.7 // 1.05..0.35
+    const inLayer = layerCounts[l]
+    for (let i = 0; i < inLayer; i++) {
+      const angle = (i / inLayer) * Math.PI * 2 + Math.random() * 0.6
+      const h = baseHeight + (Math.random() - 0.5) * heightJitter
+      // always droops down — more droop near tip of frond, plus extra droop on the very lowest layer
+      const tilt = -0.35 - Math.random() * 0.35 - layerT * -0.05
+      const scale = baseSize * (0.85 + Math.random() * 0.35)
+      const radius = 0.025 + Math.random() * 0.03
+
+      tmpPos.set(Math.cos(angle) * radius, h, Math.sin(angle) * radius)
+      tmpEuler.set(0, angle, tilt, 'YXZ')
+      tmpQuat.setFromEuler(tmpEuler)
+      tmpScale.set(scale, scale, scale)
+
+      matrices.push(new THREE.Matrix4().compose(tmpPos, tmpQuat, tmpScale))
+    }
+  }
+  return matrices
+}
+
+function Pine({ position, scale, rotationY, leanZ, foliageMaterial, trunkMaterial, swayPhase, swayAmp }) {
+  const groupRef = useRef()
+  const meshRef = useRef()
+
+  const trunkHeight = 4.5 * scale
+  const trunkBottomR = 0.05 * scale
+  const trunkTopR = 0.022 * scale
+
+  const frondMatrices = useMemo(
+    () => generateFrondMatrices(trunkHeight, FRONDS_PER_TREE, FROND_LAYERS),
+    [trunkHeight]
+  )
+
+  // apply per-instance matrices once on mount
+  useEffect(() => {
+    const mesh = meshRef.current
+    if (!mesh) return
+    for (let i = 0; i < frondMatrices.length; i++) {
+      mesh.setMatrixAt(i, frondMatrices[i])
+    }
+    mesh.instanceMatrix.needsUpdate = true
+  }, [frondMatrices])
+
+  // gentle per-tree sway via group rotation
+  useFrame((state) => {
+    if (!groupRef.current) return
+    const t = state.clock.elapsedTime * 0.6 + swayPhase
+    groupRef.current.rotation.z = leanZ + Math.sin(t) * swayAmp
+    groupRef.current.rotation.x = Math.cos(t * 0.7) * swayAmp * 0.4
+  })
+
   return (
-    <group position={position} rotation={[leanZ * 0.3, rotationY, leanZ]}>
-      {/* trunk */}
+    <group ref={groupRef} position={position} rotation={[0, rotationY, leanZ]}>
       <mesh position={[0, trunkHeight / 2, 0]} material={trunkMaterial}>
-        <cylinderGeometry args={[trunkRadius * 0.7, trunkRadius, trunkHeight, 8]} />
+        <cylinderGeometry args={[trunkTopR, trunkBottomR, trunkHeight, 8]} />
       </mesh>
-      {/* foliage cones */}
-      {cones.map((c, i) => (
-        <mesh key={i} position={[0, c.y, 0]} material={foliageMaterial}>
-          <coneGeometry args={[c.r, c.h, 12]} />
-        </mesh>
-      ))}
+      <instancedMesh
+        ref={meshRef}
+        args={[baseFrondGeometry, foliageMaterial, frondMatrices.length]}
+        frustumCulled={false}
+      />
     </group>
   )
 }
 
-// Layout: foreground hero pine, plus a scattered set behind / to the sides.
+// Layout — taller, thinner trees pushed further back so the new
+// drooping silhouette has room to breathe.
 const TREES = [
-  { id: 'hero',    position: [0,    0, -7],    scale: 1.4, rotationY: 0.2,   leanZ: 0.04, autumn: false },
-  { id: 'left-1',  position: [-3,   0, -8],    scale: 1.0, rotationY: -0.4,  leanZ: 0.0,  autumn: false },
-  { id: 'right-1', position: [3.2,  0, -8.5],  scale: 0.95, rotationY: 0.6,   leanZ: -0.03, autumn: false },
-  { id: 'back-1',  position: [-1.6, 0, -11],   scale: 0.8, rotationY: 1.1,   leanZ: 0,    autumn: true },
-  { id: 'back-2',  position: [2.4,  0, -11.5], scale: 0.7, rotationY: -0.3,  leanZ: 0,    autumn: false },
-  { id: 'back-3',  position: [-4.5, 0, -12],   scale: 0.6, rotationY: 0.5,   leanZ: 0,    autumn: false },
-  { id: 'back-4',  position: [4.8,  0, -12.5], scale: 0.65, rotationY: -0.7, leanZ: 0,    autumn: false },
+  { id: 'hero',    position: [0,    0, -8],    scale: 1.3, rotationY: 0.2,   leanZ: 0.03,  autumn: false, swayPhase: 0,    swayAmp: 0.012 },
+  { id: 'left-1',  position: [-3.4, 0, -9.5],  scale: 0.95, rotationY: -0.4,  leanZ: 0.0,   autumn: false, swayPhase: 1.7,  swayAmp: 0.014 },
+  { id: 'right-1', position: [3.6,  0, -10],   scale: 0.9, rotationY: 0.6,   leanZ: -0.02, autumn: false, swayPhase: 3.1,  swayAmp: 0.013 },
+  { id: 'back-1',  position: [-1.6, 0, -13],   scale: 0.75, rotationY: 1.1,   leanZ: 0,    autumn: true,  swayPhase: 0.8,  swayAmp: 0.010 },
+  { id: 'back-2',  position: [2.4,  0, -13.5], scale: 0.65, rotationY: -0.3,  leanZ: 0,    autumn: false, swayPhase: 2.4,  swayAmp: 0.011 },
+  { id: 'back-3',  position: [-4.7, 0, -14],   scale: 0.55, rotationY: 0.5,   leanZ: 0,    autumn: false, swayPhase: 4.0,  swayAmp: 0.010 },
+  { id: 'back-4',  position: [4.9,  0, -14.5], scale: 0.6,  rotationY: -0.7,  leanZ: 0,    autumn: false, swayPhase: 5.2,  swayAmp: 0.012 },
 ]
 
 export default function PineForest() {
@@ -65,33 +164,32 @@ export default function PineForest() {
     foliage: folder({
       colorDark:  { value: '#3e6b3a', label: 'shadow' },
       colorMid:   { value: '#7a9a4d', label: 'mid' },
-      colorLight: { value: '#a8c272', label: 'highlight' },
+      colorLight: { value: '#b8cf85', label: 'highlight' },
     }),
     autumnFoliage: folder({
       autumnDark:  { value: '#a17c2c', label: 'shadow' },
       autumnMid:   { value: '#d4a44a', label: 'mid' },
       autumnLight: { value: '#f0d182', label: 'highlight' },
     }),
-    trunkColor: { value: '#a06848', label: 'trunk' },
+    trunkColor: { value: '#9a6242', label: 'trunk' },
   })
 
-  // Two foliage materials (green + autumn) so we don't recreate per tree.
   const greenMaterial = useMemo(
     () =>
       new THREE.ShaderMaterial({
-        vertexShader: pineVertexShader,
-        fragmentShader: pineFragmentShader,
+        vertexShader: frondVertexShader,
+        fragmentShader: frondFragmentShader,
+        side: THREE.DoubleSide,
         uniforms: {
           uTime: { value: 0 },
           uWindAmp: { value: 0.04 },
           uWindSpeed: { value: 1.2 },
-          uTrunkPos: { value: new THREE.Vector3() },
           uColorDark: { value: new THREE.Color('#3e6b3a') },
           uColorMid: { value: new THREE.Color('#7a9a4d') },
-          uColorLight: { value: new THREE.Color('#a8c272') },
+          uColorLight: { value: new THREE.Color('#b8cf85') },
           uFogColor: { value: new THREE.Color('#f4ebd9') },
           uFogNear: { value: 8 },
-          uFogFar: { value: 20 },
+          uFogFar: { value: 22 },
         },
       }),
     []
@@ -99,19 +197,19 @@ export default function PineForest() {
   const autumnMaterial = useMemo(
     () =>
       new THREE.ShaderMaterial({
-        vertexShader: pineVertexShader,
-        fragmentShader: pineFragmentShader,
+        vertexShader: frondVertexShader,
+        fragmentShader: frondFragmentShader,
+        side: THREE.DoubleSide,
         uniforms: {
           uTime: { value: 0 },
           uWindAmp: { value: 0.04 },
           uWindSpeed: { value: 1.2 },
-          uTrunkPos: { value: new THREE.Vector3() },
           uColorDark: { value: new THREE.Color('#a17c2c') },
           uColorMid: { value: new THREE.Color('#d4a44a') },
           uColorLight: { value: new THREE.Color('#f0d182') },
           uFogColor: { value: new THREE.Color('#f4ebd9') },
           uFogNear: { value: 8 },
-          uFogFar: { value: 20 },
+          uFogFar: { value: 22 },
         },
       }),
     []
@@ -122,20 +220,20 @@ export default function PineForest() {
         vertexShader: trunkVertexShader,
         fragmentShader: trunkFragmentShader,
         uniforms: {
-          uTrunkColor: { value: new THREE.Color('#a06848') },
+          uTrunkColor: { value: new THREE.Color('#9a6242') },
           uFogColor: { value: new THREE.Color('#f4ebd9') },
           uFogNear: { value: 8 },
-          uFogFar: { value: 20 },
+          uFogFar: { value: 22 },
         },
       }),
     []
   )
 
-  useFrame((state, delta) => {
+  useFrame((state) => {
     const t = state.clock.elapsedTime
     for (const m of [greenMaterial, autumnMaterial]) {
       m.uniforms.uTime.value = t
-      m.uniforms.uWindAmp.value = wind.leafAmplitude ?? 0.05
+      m.uniforms.uWindAmp.value = wind.leafAmplitude ?? 0.04
       m.uniforms.uWindSpeed.value = wind.speed
       m.uniforms.uFogColor.value.set(fog.fogColor)
       m.uniforms.uFogNear.value = fog.fogNear
@@ -162,6 +260,8 @@ export default function PineForest() {
           scale={t.scale}
           rotationY={t.rotationY}
           leanZ={t.leanZ}
+          swayPhase={t.swayPhase}
+          swayAmp={t.swayAmp}
           foliageMaterial={t.autumn ? autumnMaterial : greenMaterial}
           trunkMaterial={trunkMaterial}
         />

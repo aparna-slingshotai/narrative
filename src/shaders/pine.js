@@ -1,37 +1,42 @@
-// Flat-shaded illustrative material for pine foliage. Uses banded shading
-// (toon-like, only 2-3 stops) and a sketch-noise overlay so cones read
-// as drawn rather than rendered.
-export const pineVertexShader = /* glsl */ `
+// Frond shader — color gradient along the frond length (uv.x: 0 at root,
+// 1 at tip), plus a sketchy noise overlay so the painted brush quality
+// reads even at a distance.
+export const frondVertexShader = /* glsl */ `
   uniform float uTime;
   uniform float uWindAmp;
   uniform float uWindSpeed;
-  uniform vec3 uTrunkPos;
 
+  varying vec2 vUv;
   varying vec3 vWorldPos;
-  varying vec3 vNormal;
-  varying float vHeightFactor;
+  varying float vTint;
+
+  // small per-instance pseudo-random based on the instanced model column
+  float instanceSeed() {
+    // instanceMatrix[3] holds translation — use it as a per-instance hash
+    vec3 t = vec3(instanceMatrix[3].x, instanceMatrix[3].y, instanceMatrix[3].z);
+    return fract(sin(dot(t, vec3(12.9, 78.2, 37.7))) * 43758.5);
+  }
 
   void main() {
     vec3 pos = position;
-    vec4 worldBase = modelMatrix * vec4(pos, 1.0);
 
-    // sway: stronger at the top of the tree
-    float h = clamp((worldBase.y - uTrunkPos.y) / 4.0, 0.0, 1.0);
-    float t = uTime * uWindSpeed;
-    float phase = worldBase.x * 0.5 + worldBase.z * 0.4;
-    pos.x += sin(t + phase) * uWindAmp * h * h;
-    pos.z += cos(t * 0.8 + phase * 0.7) * uWindAmp * 0.6 * h * h;
+    // tremble at the tip — local Y wobble proportional to uv.x^2
+    float seed = instanceSeed();
+    float t = uTime * uWindSpeed + seed * 6.28;
+    float tipFactor = pow(uv.x, 2.0);
+    pos.y += sin(t * 1.4) * uWindAmp * tipFactor * 0.6;
+    pos.z += cos(t * 1.1 + 0.7) * uWindAmp * tipFactor * 0.4;
 
-    vec4 wp = modelMatrix * vec4(pos, 1.0);
+    vec4 wp = modelMatrix * instanceMatrix * vec4(pos, 1.0);
     vWorldPos = wp.xyz;
-    vNormal = normalize(normalMatrix * normal);
-    vHeightFactor = h;
+    vUv = uv;
+    vTint = seed * 2.0 - 1.0; // -1..1 per-frond color jitter
 
     gl_Position = projectionMatrix * viewMatrix * wp;
   }
 `
 
-export const pineFragmentShader = /* glsl */ `
+export const frondFragmentShader = /* glsl */ `
   uniform vec3 uColorDark;
   uniform vec3 uColorMid;
   uniform vec3 uColorLight;
@@ -39,31 +44,31 @@ export const pineFragmentShader = /* glsl */ `
   uniform float uFogNear;
   uniform float uFogFar;
 
+  varying vec2 vUv;
   varying vec3 vWorldPos;
-  varying vec3 vNormal;
-  varying float vHeightFactor;
+  varying float vTint;
 
-  // tiny hash for sketchy noise
   float hash(vec2 p){ return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
 
   void main() {
-    // banded toon shading from a soft directional key
-    vec3 light = normalize(vec3(0.4, 0.9, 0.3));
-    float ndl = dot(normalize(vNormal), light) * 0.5 + 0.5;
-    float band = step(0.55, ndl); // hard 2-stop shading
+    // along the frond: dark at root, mid in middle, light near tip
+    vec3 color = mix(uColorDark, uColorMid, smoothstep(0.0, 0.55, vUv.x));
+    color = mix(color, uColorLight, smoothstep(0.55, 1.0, vUv.x));
 
-    vec3 color = mix(uColorDark, uColorMid, band);
-    color = mix(color, uColorLight, step(0.78, ndl));
+    // per-frond hue jitter
+    color.r += vTint * 0.05;
+    color.g += vTint * 0.04;
+    color.b -= vTint * 0.03;
 
-    // height tint — top slightly lighter (sun catching the cone tip)
-    color = mix(color, uColorLight, vHeightFactor * 0.18);
+    // sketchy noise overlay
+    vec2 nUv = floor(vWorldPos.xy * 70.0);
+    color *= 0.93 + hash(nUv) * 0.10;
 
-    // sketchy texture overlay
-    vec2 uv = floor(vWorldPos.xy * 80.0);
-    float sketch = hash(uv);
-    color *= 0.93 + sketch * 0.10;
+    // soft side fade — frond reads as drawn rather than rectangular
+    float edge = 1.0 - smoothstep(0.65, 1.0, abs(vUv.y - 0.5) * 2.0);
+    color *= 0.85 + edge * 0.15;
 
-    // distance fog → blends into sky
+    // fog into sky
     float dist = length(vWorldPos - cameraPosition);
     float fog = smoothstep(uFogNear, uFogFar, dist);
     color = mix(color, uFogColor, fog);
@@ -72,7 +77,7 @@ export const pineFragmentShader = /* glsl */ `
   }
 `
 
-// Trunk: simple flat brown with sketch noise
+// Trunk: thin cylinder with vertical sketch hatching
 export const trunkVertexShader = /* glsl */ `
   varying vec3 vWorldPos;
   varying vec3 vNormal;
@@ -97,11 +102,11 @@ export const trunkFragmentShader = /* glsl */ `
   void main() {
     vec3 light = normalize(vec3(0.5, 0.8, 0.3));
     float ndl = dot(normalize(vNormal), light) * 0.5 + 0.5;
-    vec3 color = mix(uTrunkColor * 0.75, uTrunkColor, smoothstep(0.4, 0.8, ndl));
+    vec3 color = mix(uTrunkColor * 0.7, uTrunkColor, smoothstep(0.4, 0.85, ndl));
 
     // vertical sketch hatching
     vec2 uv = floor(vec2(vWorldPos.x * 60.0, vWorldPos.y * 8.0));
-    color *= 0.92 + hash(uv) * 0.12;
+    color *= 0.9 + hash(uv) * 0.14;
 
     float dist = length(vWorldPos - cameraPosition);
     float fog = smoothstep(uFogNear, uFogFar, dist);
