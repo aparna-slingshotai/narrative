@@ -71,11 +71,12 @@ export default function GrassField() {
     const leans = new Float32Array(BLADE_COUNT)
     const tints = new Float32Array(BLADE_COUNT)
 
-    // Probabilistic river exclusion — blades closer to the river get
-    // higher rejection probability, fading to 0 a little beyond the bank.
-    // Smooth fade avoids the hard sandy edge the previous binary cut left.
-    const HARD_EXCLUSION = RIVER_WIDTH * 0.5            // 100% reject inside the water itself
-    const SOFT_FADE = HARD_EXCLUSION + RIVER_BANK_WIDTH * 0.4 // density fades up to here
+    // Grass grows right up to (and just barely into) the water's edge so
+    // the bank doesn't read as a missing strip. Hard exclusion is now
+    // smaller than the water radius so a few blades poke out of the water
+    // line; the soft-fade is short.
+    const HARD_EXCLUSION = RIVER_WIDTH * 0.42
+    const SOFT_FADE = HARD_EXCLUSION + 0.3
 
     let placed = 0
     let attempts = 0
