@@ -6,9 +6,9 @@ import { useTouchTrail, TRAIL_LENGTH } from '../hooks/useTouch'
 import { useGrassControls, useWindControls, useFogControls } from '../hooks/useSceneControls'
 import { distanceToRiverSq, RIVER_WIDTH, RIVER_BANK_WIDTH } from '../scene/river'
 
-const BLADE_COUNT = 22000
-const FIELD_WIDTH = 14
-const FIELD_DEPTH = 18
+const BLADE_COUNT = 14000
+const FIELD_WIDTH = 9
+const FIELD_DEPTH = 11
 const BLADE_SEGMENTS = 6
 
 function createBladeGeometry() {
