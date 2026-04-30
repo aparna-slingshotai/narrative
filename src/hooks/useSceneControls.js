@@ -2,17 +2,18 @@ import { useControls, folder } from 'leva'
 
 export function useGrassControls() {
   return useControls('Grass', {
-    touchRadius: { value: 2.5, min: 0.3, max: 6, step: 0.1 },
-    touchStrength: { value: 1.2, min: 0, max: 3, step: 0.05 },
+    touchRadius: { value: 1.4, min: 0.3, max: 6, step: 0.1 },
+    touchStrength: { value: 0.3, min: 0, max: 2, step: 0.02 },
+    touchHighlight: { value: 0.4, min: 0, max: 1.5, step: 0.05, label: 'highlight' },
     touchLerp: { value: 0.08, min: 0.01, max: 1, step: 0.01, label: 'response' },
   })
 }
 
 export function useWindControls() {
   return useControls('Wind', {
-    speed: { value: 1.5, min: 0, max: 5, step: 0.1 },
-    grassAmplitude: { value: 0.08, min: 0, max: 0.4, step: 0.005, label: 'grass sway' },
-    treeAmplitude: { value: 0.04, min: 0, max: 0.3, step: 0.005, label: 'tree sway' },
+    speed: { value: 1.2, min: 0, max: 5, step: 0.1 },
+    grassAmplitude: { value: 0.05, min: 0, max: 0.4, step: 0.005, label: 'grass sway' },
+    treeAmplitude: { value: 0.025, min: 0, max: 0.3, step: 0.005, label: 'tree sway' },
   })
 }
 

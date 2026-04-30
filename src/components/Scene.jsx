@@ -25,8 +25,8 @@ export default function Scene() {
       <GrassField />
 
       <mesh rotation-x={-Math.PI / 2} position={[0, -0.01, 0]} receiveShadow>
-        <planeGeometry args={[20, 20]} />
-        <meshStandardMaterial color="#2a4a12" roughness={1} />
+        <planeGeometry args={[40, 40]} />
+        <meshStandardMaterial color="#29481a" roughness={1} />
       </mesh>
     </>
   )
