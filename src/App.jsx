@@ -5,6 +5,8 @@ import { Leva } from 'leva'
 import Scene from './components/Scene'
 import PostFx from './components/PostFx'
 import WhiteVignette from './components/WhiteVignette'
+import TextOverlay from './components/TextOverlay'
+import AmbientAudio from './components/AmbientAudio'
 import { TouchProvider } from './hooks/useTouch'
 
 export default function App() {
@@ -30,7 +32,9 @@ export default function App() {
           </Suspense>
         </Canvas>
         <WhiteVignette />
+        <TextOverlay />
       </TouchProvider>
+      <AmbientAudio />
     </>
   )
 }
