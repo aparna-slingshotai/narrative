@@ -4,6 +4,7 @@ import PineForest from './PineForest'
 import CameraRig from './CameraRig'
 import Ground from './Ground'
 import PathWalker from './PathWalker'
+import River from './River'
 import { useControls } from 'leva'
 import { useFogControls, usePathControls } from '../hooks/useSceneControls'
 
@@ -24,6 +25,7 @@ export default function Scene() {
 
       <Sky />
       <Ground color={groundColor} fogColor={fog.fogColor} fogNear={fog.fogNear} fogFar={fog.fogFar} />
+      <River />
       <PineForest />
       <GrassField />
     </>

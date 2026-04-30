@@ -4,6 +4,7 @@ import * as THREE from 'three'
 import { grassVertexShader, grassFragmentShader, TRAIL_SIZE } from '../shaders/grass'
 import { useTouchTrail, TRAIL_LENGTH } from '../hooks/useTouch'
 import { useGrassControls, useWindControls, useFogControls } from '../hooks/useSceneControls'
+import { distanceToRiverSq, RIVER_WIDTH, RIVER_BANK_WIDTH } from '../scene/river'
 
 const BLADE_COUNT = 14000
 const FIELD_WIDTH = 9
@@ -70,20 +71,33 @@ export default function GrassField() {
     const leans = new Float32Array(BLADE_COUNT)
     const tints = new Float32Array(BLADE_COUNT)
 
-    for (let i = 0; i < BLADE_COUNT; i++) {
+    // Carve a river-shaped exclusion zone — blades inside the channel get
+    // their height squashed to 0 so they don't render. Faster than
+    // generating-and-rejecting which would leave a sparse field.
+    const exclusionRadiusSq =
+      ((RIVER_WIDTH * 0.5 + RIVER_BANK_WIDTH * 0.6) ** 2)
+
+    let placed = 0
+    let attempts = 0
+    while (placed < BLADE_COUNT && attempts < BLADE_COUNT * 4) {
+      attempts++
       const r = Math.random()
-      offsets[i * 3] = (Math.random() - 0.5) * FIELD_WIDTH
-      offsets[i * 3 + 1] = 0
-      offsets[i * 3 + 2] = (1 - r * r) * -FIELD_DEPTH + 2.5
-      heights[i] = sampleHeight()
-      // taller blades get slightly thicker, but with extra variance so it isn't perfectly correlated
-      widths[i] = 0.7 + Math.random() * 0.9
-      phases[i] = Math.random() * Math.PI * 2
-      rotations[i] = Math.random() * Math.PI * 2
-      // lean: most blades stand near upright, some lean noticeably
-      leans[i] = (Math.random() - 0.5) * 0.5 // ±0.25 rad ≈ ±14°
-      tints[i] = (Math.random() - 0.5) * 2
+      const x = (Math.random() - 0.5) * FIELD_WIDTH
+      const z = (1 - r * r) * -FIELD_DEPTH + 2.5
+      if (distanceToRiverSq(x, z) < exclusionRadiusSq) continue
+      offsets[placed * 3] = x
+      offsets[placed * 3 + 1] = 0
+      offsets[placed * 3 + 2] = z
+      heights[placed] = sampleHeight()
+      widths[placed] = 0.7 + Math.random() * 0.9
+      phases[placed] = Math.random() * Math.PI * 2
+      rotations[placed] = Math.random() * Math.PI * 2
+      leans[placed] = (Math.random() - 0.5) * 0.5
+      tints[placed] = (Math.random() - 0.5) * 2
+      placed++
     }
+    // any remaining slots get hidden far away (height 0)
+    for (let i = placed; i < BLADE_COUNT; i++) heights[i] = 0
 
     geo.setAttribute('offset', new THREE.InstancedBufferAttribute(offsets, 3))
     geo.setAttribute('heightScale', new THREE.InstancedBufferAttribute(heights, 1))

@@ -10,8 +10,8 @@ import {
 import { useWindControls, useFogControls } from '../hooks/useSceneControls'
 import { useControls, folder } from 'leva'
 
-const FRONDS_PER_TREE = 180
-const FROND_LAYERS = 9
+const FRONDS_PER_TREE = 280
+const FROND_LAYERS = 10
 
 // A single tapered, drooping needle frond. Lies along +X axis with the
 // tip drooping down -Y, so when an instance is rotated around Y the
@@ -21,15 +21,16 @@ function createFrondGeometry() {
   const verts = []
   const uvs = []
   const indices = []
-  const segments = 5
-  const length = 1.0
-  const baseWidth = 0.10
+  const segments = 7
+  const length = 1.7         // longer
+  const baseWidth = 0.20      // wider
   for (let i = 0; i <= segments; i++) {
     const t = i / segments
-    const w = baseWidth * (1 - Math.pow(t, 1.4)) // taper toward tip
+    // softer taper so most of the frond stays full-width, only the tip narrows
+    const w = baseWidth * (1 - Math.pow(t, 2.4))
     const x = t * length
-    // baked downward droop on Y, more pronounced near the tip
-    const y = -Math.pow(t, 2) * 0.32
+    // deeper droop with mild S-curve
+    const y = -Math.pow(t, 1.8) * 0.55
     verts.push(x, y, -w)
     verts.push(x, y, w)
     uvs.push(t, 0)
@@ -64,7 +65,7 @@ function generateFrondMatrices(treeHeight, count, layers) {
   const layerCounts = []
   let totalWeight = 0
   for (let l = 0; l < layers; l++) {
-    const w = 1 + (layers - l - 1) * 0.4 // bottom layers get larger weight
+    const w = 1 + (layers - l - 1) * 0.5 // bottom layers get larger weight
     layerCounts.push(w)
     totalWeight += w
   }
@@ -74,19 +75,17 @@ function generateFrondMatrices(treeHeight, count, layers) {
 
   for (let l = 0; l < layers; l++) {
     const layerT = l / (layers - 1) // 0 at bottom, 1 at top
-    // height: span 0.18 to 1.0 of trunk so fronds extend to the very tip
-    const baseHeight = (0.18 + layerT * 0.82) * treeHeight
-    const heightJitter = 0.05 * treeHeight
-    // size: bottom layers are larger, taper toward the top
-    const baseSize = 1.05 - layerT * 0.7 // 1.05..0.35
+    const baseHeight = (0.16 + layerT * 0.84) * treeHeight
+    const heightJitter = 0.06 * treeHeight
+    // bottom layers significantly larger; taper toward the top
+    const baseSize = 1.25 - layerT * 0.85 // 1.25..0.4
     const inLayer = layerCounts[l]
     for (let i = 0; i < inLayer; i++) {
-      const angle = (i / inLayer) * Math.PI * 2 + Math.random() * 0.6
+      const angle = (i / inLayer) * Math.PI * 2 + Math.random() * 0.7
       const h = baseHeight + (Math.random() - 0.5) * heightJitter
-      // always droops down — more droop near tip of frond, plus extra droop on the very lowest layer
-      const tilt = -0.35 - Math.random() * 0.35 - layerT * -0.05
-      const scale = baseSize * (0.85 + Math.random() * 0.35)
-      const radius = 0.025 + Math.random() * 0.03
+      const tilt = -0.30 - Math.random() * 0.30 - layerT * -0.05
+      const scale = baseSize * (0.85 + Math.random() * 0.4)
+      const radius = 0.025 + Math.random() * 0.04
 
       tmpPos.set(Math.cos(angle) * radius, h, Math.sin(angle) * radius)
       tmpEuler.set(0, angle, tilt, 'YXZ')
