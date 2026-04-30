@@ -1,32 +1,52 @@
 import { useRef, useMemo } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
-import { grassVertexShader, grassFragmentShader } from '../shaders/grass'
-import { useTouchWorldPosition } from '../hooks/useTouch'
+import { grassVertexShader, grassFragmentShader, TRAIL_SIZE } from '../shaders/grass'
+import { useTouchTrail, TRAIL_LENGTH } from '../hooks/useTouch'
 import { useGrassControls, useWindControls } from '../hooks/useSceneControls'
 
-const BLADE_COUNT = 3500
-const FIELD_WIDTH = 7
-const FIELD_DEPTH = 8
+const BLADE_COUNT = 5000
+const FIELD_WIDTH = 8
+const FIELD_DEPTH = 9
+const BLADE_SEGMENTS = 5
 
 function createBladeGeometry() {
   const geo = new THREE.BufferGeometry()
-  const verts = new Float32Array([
-    -0.015, 0, 0,
-     0.015, 0, 0,
-    -0.008, 0.15, 0,
-     0.008, 0.15, 0,
-     0.0, 0.3, 0,
-  ])
-  const indices = [0, 1, 2, 2, 1, 3, 2, 3, 4]
-  geo.setAttribute('position', new THREE.BufferAttribute(verts, 3))
+
+  const verts = []
+  const uvs = []
+  const indices = []
+
+  const baseWidth = 0.025
+  const tipWidth = 0.0
+  const height = 0.45
+
+  for (let i = 0; i <= BLADE_SEGMENTS; i++) {
+    const t = i / BLADE_SEGMENTS
+    const w = THREE.MathUtils.lerp(baseWidth, tipWidth, t * t)
+    const y = t * height
+    const z = Math.sin(t * Math.PI * 0.5) * 0.06
+    verts.push(-w, y, z)
+    verts.push(w, y, z)
+    uvs.push(0, t, 1, t)
+  }
+
+  for (let i = 0; i < BLADE_SEGMENTS; i++) {
+    const a = i * 2
+    indices.push(a, a + 1, a + 2)
+    indices.push(a + 2, a + 1, a + 3)
+  }
+
+  geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(verts), 3))
+  geo.setAttribute('uv', new THREE.BufferAttribute(new Float32Array(uvs), 2))
   geo.setIndex(indices)
+  geo.computeVertexNormals()
   return geo
 }
 
 export default function GrassField() {
   const meshRef = useRef()
-  const { worldPos, touchRef } = useTouchWorldPosition()
+  const touchRef = useTouchTrail({ sampleInterval: 0.04, minDistance: 0.08 })
   const grass = useGrassControls()
   const wind = useWindControls()
 
@@ -36,23 +56,32 @@ export default function GrassField() {
     const offsets = new Float32Array(BLADE_COUNT * 3)
     const scales = new Float32Array(BLADE_COUNT)
     const phases = new Float32Array(BLADE_COUNT)
+    const rotations = new Float32Array(BLADE_COUNT)
+    const tints = new Float32Array(BLADE_COUNT)
 
     for (let i = 0; i < BLADE_COUNT; i++) {
+      const r = Math.random()
       offsets[i * 3] = (Math.random() - 0.5) * FIELD_WIDTH
       offsets[i * 3 + 1] = 0
-      offsets[i * 3 + 2] = Math.random() * -FIELD_DEPTH + 3
-      scales[i] = 0.4 + Math.random() * 0.5
+      offsets[i * 3 + 2] = (1 - r * r) * -FIELD_DEPTH + 2.5
+      scales[i] = 0.5 + Math.random() * 0.6
       phases[i] = Math.random() * Math.PI * 2
+      rotations[i] = Math.random() * Math.PI * 2
+      tints[i] = (Math.random() - 0.5) * 2
     }
 
     geo.setAttribute('offset', new THREE.InstancedBufferAttribute(offsets, 3))
     geo.setAttribute('scale', new THREE.InstancedBufferAttribute(scales, 1))
     geo.setAttribute('phase', new THREE.InstancedBufferAttribute(phases, 1))
+    geo.setAttribute('rotation', new THREE.InstancedBufferAttribute(rotations, 1))
+    geo.setAttribute('tint', new THREE.InstancedBufferAttribute(tints, 1))
+
+    const trail = []
+    for (let i = 0; i < TRAIL_SIZE; i++) trail.push(new THREE.Vector4(0, 0, 0, 999))
 
     const uniforms = {
       uTime: { value: 0 },
-      uTouchPos: { value: new THREE.Vector3() },
-      uTouchActive: { value: 0 },
+      uTrail: { value: trail },
       uTouchRadius: { value: 2.5 },
       uTouchStrength: { value: 1.2 },
       uWindSpeed: { value: 1.5 },
@@ -69,14 +98,12 @@ export default function GrassField() {
     uniforms.uWindSpeed.value = wind.speed
     uniforms.uWindAmplitude.value = wind.grassAmplitude
 
-    const active = touchRef.current.active ? 1 : 0
-    uniforms.uTouchActive.value = THREE.MathUtils.lerp(
-      uniforms.uTouchActive.value,
-      active,
-      grass.touchLerp
-    )
-    if (touchRef.current.active) {
-      uniforms.uTouchPos.value.lerp(worldPos.current, Math.min(grass.touchLerp * 1.5, 1))
+    // copy trail buffer into uniform
+    const data = touchRef.current
+    const trailUniform = uniforms.uTrail.value
+    for (let i = 0; i < TRAIL_LENGTH; i++) {
+      const slot = data.trail[i]
+      trailUniform[i].set(slot.pos.x, slot.pos.y, slot.pos.z, slot.age)
     }
   })
 

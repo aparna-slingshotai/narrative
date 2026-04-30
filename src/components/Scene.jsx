@@ -10,7 +10,7 @@ export default function Scene() {
   const { scene } = useThree()
 
   useEffect(() => {
-    scene.fog = new THREE.FogExp2(0x8fb0c4, 0.035)
+    scene.fog = new THREE.FogExp2(0xc8d8e8, 0.012)
   }, [scene])
 
   return (
