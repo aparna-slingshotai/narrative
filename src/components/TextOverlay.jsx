@@ -14,14 +14,14 @@ const wrapperStyle = {
 
 const headerStyle = {
   fontFamily: 'Georgia, "Times New Roman", "DM Serif Display", serif',
-  fontSize: 36,
+  fontSize: 26,
   fontWeight: 400,
   color: 'white',
   textAlign: 'center',
-  lineHeight: 1.05,
+  lineHeight: 1.1,
   margin: 0,
-  textShadow: '0 2px 12px rgba(0,0,0,0.35)',
-  letterSpacing: '-0.01em',
+  textShadow: '0 2px 10px rgba(0,0,0,0.3)',
+  letterSpacing: '-0.005em',
 }
 
 const ctaGridStyle = {
@@ -83,31 +83,19 @@ const frostedCardStyle = {
   gap: 8,
 }
 
-const solidIconCircle = {
-  width: 24,
-  height: 24,
-  borderRadius: '50%',
-  background: '#e8e0d0',
+const solidIconStyle = {
   color: '#5a4a30',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  fontSize: 16,
+  fontSize: 22,
   alignSelf: 'flex-start',
+  lineHeight: 1,
 }
 
-const frostedIconCircle = {
-  width: 26,
-  height: 26,
-  borderRadius: '50%',
-  background: 'rgba(255, 255, 255, 0.22)',
+const frostedIconStyle = {
   color: 'white',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  fontSize: 17,
+  fontSize: 22,
   alignSelf: 'flex-start',
-  border: '1px solid rgba(255, 255, 255, 0.25)',
+  lineHeight: 1,
+  filter: 'drop-shadow(0 1px 4px rgba(0,0,0,0.35))',
 }
 
 export default function TextOverlay() {
@@ -140,7 +128,7 @@ export default function TextOverlay() {
   ].slice(0, ctrl.ctaCount)
 
   const cardStyle = ctrl.frosted ? frostedCardStyle : solidCardStyle
-  const iconStyle = ctrl.frosted ? frostedIconCircle : solidIconCircle
+  const iconStyle = ctrl.frosted ? frostedIconStyle : solidIconStyle
 
   return (
     <div style={wrapperStyle}>
@@ -161,8 +149,8 @@ export default function TextOverlay() {
               onClick={() => console.log('CTA tapped:', cta.text)}
             >
               {cta.icon && (
-                <span style={iconStyle}>
-                  <span className="material-symbols-rounded">{cta.icon}</span>
+                <span className="material-symbols-rounded" style={iconStyle}>
+                  {cta.icon}
                 </span>
               )}
               <span>{cta.text}</span>
