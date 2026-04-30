@@ -2,6 +2,7 @@ import { useRef, useEffect, useMemo } from 'react'
 import { useGLTF } from '@react-three/drei'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
+import { useControls, folder } from 'leva'
 import { useWindControls, useTreeControls, useFogControls } from '../hooks/useSceneControls'
 
 const barkVertexShader = /* glsl */ `
@@ -59,13 +60,17 @@ const barkFragmentShader = /* glsl */ `
   }
 `
 
-// Willow leaf shader: wind sway driven by world position + per-vertex random
-// (encoded in vertex normal as a phase trick) so leaves don't sway uniformly.
+// Willow leaf shader: wind sway with smooth spatially-coherent color so
+// adjacent strands look similar — avoids strobing when they sway across
+// the same pixel.
 const leafVertexShader = /* glsl */ `
   uniform float uTime;
   uniform float uWindSpeed;
   uniform float uLeafAmplitude;
   uniform vec3 uTrunkPos;
+  uniform vec3 uLeafDark;
+  uniform vec3 uLeafMid;
+  uniform vec3 uLeafLight;
   varying vec3 vWorldPos;
   varying vec3 vColor;
 
@@ -73,25 +78,35 @@ const leafVertexShader = /* glsl */ `
     vec3 pos = position;
     vec4 worldBase = modelMatrix * vec4(pos, 1.0);
 
-    // distance from trunk (in xz) — leaf strands further out sway more
-    float distFromTrunk = length(worldBase.xz - uTrunkPos.xz);
-    // height factor — drooping willow strands hang DOWN from a high anchor,
-    // so the lowest part of the leaf canopy moves the most
+    // height factor — drooping willow strands hang DOWN, lower parts move more
     float heightFactor = clamp(1.0 - (worldBase.y - uTrunkPos.y) / 4.0, 0.0, 1.0);
     float swayAmount = uLeafAmplitude * (0.4 + heightFactor * heightFactor * 1.2);
 
-    // multi-axis wind with per-vertex phase from world position (acts as random seed)
+    // wind displacement
     float t = uTime * uWindSpeed;
-    float phase = worldBase.x * 0.8 + worldBase.z * 0.6;
-    pos.x += sin(t + phase) * swayAmount;
-    pos.z += cos(t * 0.7 + phase * 0.9) * swayAmount * 0.6;
+    float swayPhase = worldBase.x * 0.8 + worldBase.z * 0.6;
+    pos.x += sin(t + swayPhase) * swayAmount;
+    pos.z += cos(t * 0.7 + swayPhase * 0.9) * swayAmount * 0.6;
 
     vec4 wp = modelMatrix * vec4(pos, 1.0);
     vWorldPos = wp.xyz;
-    // capture a procedural color — slight per-strand variation so leaves
-    // don't all look identical
-    float v = fract(sin(phase * 12.9) * 43.7);
-    vColor = mix(vec3(0.20, 0.34, 0.10), vec3(0.36, 0.55, 0.18), v);
+
+    // SMOOTH color variation: continuous sin-based noise instead of fract(sin)
+    // hash. Two octaves at different scales for organic feel without harshness.
+    float seed = worldBase.x * 0.5 + worldBase.z * 0.4 + worldBase.y * 0.15;
+    float n1 = 0.5 + 0.5 * sin(seed);
+    float n2 = 0.5 + 0.5 * sin(seed * 2.3 + 1.7);
+    float blend = n1 * 0.65 + n2 * 0.35;
+
+    // 3-stop palette — smooth interpolation, no hard color jumps
+    vec3 color = mix(uLeafDark, uLeafMid, smoothstep(0.0, 0.55, blend));
+    color = mix(color, uLeafLight, smoothstep(0.55, 1.0, blend));
+
+    // gentle canopy-height tint: top brighter, bottom slightly cooler
+    float canopyT = clamp((worldBase.y - uTrunkPos.y + 2.0) * 0.12, 0.0, 1.0);
+    color += vec3(0.04, 0.05, 0.02) * canopyT;
+
+    vColor = color;
 
     gl_Position = projectionMatrix * viewMatrix * wp;
   }
@@ -118,6 +133,11 @@ export default function WillowTree() {
   const wind = useWindControls()
   const tree = useTreeControls()
   const fog = useFogControls()
+  const leafColors = useControls('Leaves', {
+    leafDark: { value: '#34521a', label: 'dark' },
+    leafMid: { value: '#4d702a', label: 'mid' },
+    leafLight: { value: '#6f9239', label: 'light' },
+  })
 
   const barkMaterial = useMemo(
     () =>
@@ -146,6 +166,9 @@ export default function WillowTree() {
           uWindSpeed: { value: 1.4 },
           uLeafAmplitude: { value: 0.18 },
           uTrunkPos: { value: new THREE.Vector3(0, 4, -3) },
+          uLeafDark: { value: new THREE.Color('#34521a') },
+          uLeafMid: { value: new THREE.Color('#4d702a') },
+          uLeafLight: { value: new THREE.Color('#6f9239') },
           uFogColor: { value: new THREE.Color('#bfd8e8') },
           uFogNear: { value: 8 },
           uFogFar: { value: 20 },
@@ -181,6 +204,9 @@ export default function WillowTree() {
     leafMaterial.uniforms.uTime.value += delta
     leafMaterial.uniforms.uWindSpeed.value = wind.speed
     leafMaterial.uniforms.uLeafAmplitude.value = wind.leafAmplitude ?? 0.18
+    leafMaterial.uniforms.uLeafDark.value.set(leafColors.leafDark)
+    leafMaterial.uniforms.uLeafMid.value.set(leafColors.leafMid)
+    leafMaterial.uniforms.uLeafLight.value.set(leafColors.leafLight)
     leafMaterial.uniforms.uFogColor.value.set(fog.fogColor)
     leafMaterial.uniforms.uFogNear.value = fog.fogNear
     leafMaterial.uniforms.uFogFar.value = fog.fogFar
