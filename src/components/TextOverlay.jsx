@@ -119,7 +119,7 @@ export default function TextOverlay() {
     },
     ctas: folder({
       ctaCount: { value: 4, min: 0, max: 4, step: 1, label: 'count' },
-      frosted: { value: false, label: 'frosted glass' },
+      frosted: { value: true, label: 'frosted glass' },
       cta1Icon: { value: 'psychology', label: 'cta 1 icon' },
       cta1Text: { value: 'My thoughts are tangled', label: 'cta 1 text' },
       cta2Icon: { value: 'favorite', label: 'cta 2 icon' },
