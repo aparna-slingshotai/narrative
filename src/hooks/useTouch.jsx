@@ -1,6 +1,7 @@
 import { createContext, useContext, useRef, useCallback } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
+import { useSceneStore } from '../state/sceneStore'
 
 const TouchContext = createContext(null)
 
@@ -18,6 +19,18 @@ function makeTrail() {
   return arr
 }
 
+// Drop a single trail point at a world position. PathWalker calls this each
+// step so grass auto-bends around the moving player without needing a real
+// pointer event.
+export function dropVirtualTrailPoint(touchRef, worldPos) {
+  const data = touchRef.current
+  if (!data) return
+  const slot = data.trail[data.head]
+  slot.pos.copy(worldPos)
+  slot.age = 0
+  data.head = (data.head + 1) % TRAIL_LENGTH
+}
+
 export function TouchProvider({ children }) {
   const touchRef = useRef({
     active: false,
@@ -28,7 +41,12 @@ export function TouchProvider({ children }) {
     head: 0, // index of next slot to write
   })
 
+  // Pointer events become no-ops while the camera is walking, so the user
+  // can't fight the path animator with manual touch.
+  const blocked = () => useSceneStore.getState().isWalking
+
   const handlePointer = useCallback((e) => {
+    if (blocked()) return
     const rect = e.target.getBoundingClientRect()
     const src = e.touches ? e.touches[0] : e
     touchRef.current.ndc.set(

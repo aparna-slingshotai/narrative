@@ -1,4 +1,6 @@
 import { useControls, folder } from 'leva'
+import { useSceneStore } from '../state/sceneStore'
+import { path } from '../scene/path'
 
 const wrapperStyle = {
   position: 'absolute',
@@ -13,8 +15,7 @@ const wrapperStyle = {
   fontFamily: 'system-ui, -apple-system, "Segoe UI", sans-serif',
 }
 
-// Constrain content to a phone-sized column so layout matches mobile on
-// desktop too.
+// Constrain content to a phone-sized column on desktop too.
 const innerColumnStyle = {
   width: '100%',
   maxWidth: 420,
@@ -33,6 +34,7 @@ const headerStyle = {
   margin: 0,
   textShadow: '0 2px 10px rgba(0,0,0,0.3)',
   letterSpacing: '-0.005em',
+  transition: 'opacity 0.4s ease',
 }
 
 const ctaGridStyle = {
@@ -40,15 +42,16 @@ const ctaGridStyle = {
   gridTemplateColumns: '1fr 1fr',
   gap: 10,
   pointerEvents: 'auto',
+  transition: 'opacity 0.4s ease',
 }
 
 const ctaSingleStyle = {
   display: 'flex',
   justifyContent: 'center',
   pointerEvents: 'auto',
+  transition: 'opacity 0.4s ease',
 }
 
-// Solid (default) card style — matches the original cream Lusion-style cards
 const solidCardStyle = {
   background: '#f3ede1',
   borderRadius: 14,
@@ -69,7 +72,6 @@ const solidCardStyle = {
   gap: 8,
 }
 
-// Frosted (iOS 26 "liquid glass") variant
 const frostedCardStyle = {
   background: 'rgba(255, 255, 255, 0.18)',
   backdropFilter: 'blur(24px) saturate(180%)',
@@ -86,8 +88,7 @@ const frostedCardStyle = {
   textShadow: '0 1px 6px rgba(0,0,0,0.4)',
   lineHeight: 1.3,
   minHeight: 64,
-  boxShadow:
-    '0 4px 24px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,0.35)',
+  boxShadow: '0 4px 24px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,0.35)',
   display: 'flex',
   flexDirection: 'column',
   justifyContent: 'flex-end',
@@ -110,43 +111,32 @@ const frostedIconStyle = {
 }
 
 export default function TextOverlay() {
-  const ctrl = useControls('Text Input', {
+  const { frosted, showHeader } = useControls('Text Style', {
     showHeader: { value: true, label: 'show header' },
-    headerText: {
-      value: 'How are you\nfeeling right now?',
-      label: 'header',
-      rows: 2,
-    },
-    ctas: folder({
-      ctaCount: { value: 4, min: 0, max: 4, step: 1, label: 'count' },
-      frosted: { value: true, label: 'frosted glass' },
-      cta1Icon: { value: 'psychology', label: 'cta 1 icon' },
-      cta1Text: { value: 'My thoughts are tangled', label: 'cta 1 text' },
-      cta2Icon: { value: 'favorite', label: 'cta 2 icon' },
-      cta2Text: { value: 'I want to understand myself better', label: 'cta 2 text' },
-      cta3Icon: { value: 'auto_awesome', label: 'cta 3 icon' },
-      cta3Text: { value: 'I have something on my mind', label: 'cta 3 text' },
-      cta4Icon: { value: 'explore', label: 'cta 4 icon' },
-      cta4Text: { value: 'Just curious', label: 'cta 4 text' },
-    }),
+    frosted: { value: true, label: 'frosted glass' },
   })
 
-  const ctas = [
-    { icon: ctrl.cta1Icon, text: ctrl.cta1Text },
-    { icon: ctrl.cta2Icon, text: ctrl.cta2Text },
-    { icon: ctrl.cta3Icon, text: ctrl.cta3Text },
-    { icon: ctrl.cta4Icon, text: ctrl.cta4Text },
-  ].slice(0, ctrl.ctaCount)
+  const currentNodeId = useSceneStore((s) => s.currentNodeId)
+  const isWalking = useSceneStore((s) => s.isWalking)
+  const selectChoice = useSceneStore((s) => s.selectChoice)
 
-  const cardStyle = ctrl.frosted ? frostedCardStyle : solidCardStyle
-  const iconStyle = ctrl.frosted ? frostedIconStyle : solidIconStyle
+  const node = currentNodeId ? path.nodes[currentNodeId] : null
+  const headerText = node?.headerText ?? ''
+  const choices = node?.choices ?? []
+
+  const cardStyle = frosted ? frostedCardStyle : solidCardStyle
+  const iconStyle = frosted ? frostedIconStyle : solidIconStyle
+
+  // Fade overlay out while walking; fade back in on arrival.
+  const fadeOpacity = isWalking ? 0 : 1
+  const ctasInteractive = !isWalking && choices.length > 0
 
   return (
     <div style={wrapperStyle}>
       <div style={innerColumnStyle}>
-        {ctrl.showHeader && (
-          <h1 style={headerStyle}>
-            {ctrl.headerText.split('\n').map((line, i) => (
+        {showHeader && headerText && (
+          <h1 style={{ ...headerStyle, opacity: fadeOpacity }}>
+            {headerText.split('\n').map((line, i) => (
               <div key={i}>{line}</div>
             ))}
           </h1>
@@ -154,13 +144,19 @@ export default function TextOverlay() {
       </div>
       <div style={{ flex: 1 }} />
       <div style={innerColumnStyle}>
-        {ctas.length > 0 && (
-          <div style={ctas.length === 1 ? ctaSingleStyle : ctaGridStyle}>
-            {ctas.map((cta, i) => (
+        {choices.length > 0 && (
+          <div
+            style={{
+              ...(choices.length === 1 ? ctaSingleStyle : ctaGridStyle),
+              opacity: fadeOpacity,
+              pointerEvents: ctasInteractive ? 'auto' : 'none',
+            }}
+          >
+            {choices.map((cta, i) => (
               <button
                 key={i}
                 style={cardStyle}
-                onClick={() => console.log('CTA tapped:', cta.text)}
+                onClick={() => selectChoice(cta.nextId, cta.duration)}
               >
                 {cta.icon && (
                   <span className="material-symbols-rounded" style={iconStyle}>

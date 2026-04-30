@@ -7,44 +7,29 @@ import { skyVertexShader, skyFragmentShader } from '../shaders/sky'
 export default function Sky() {
   const matRef = useRef()
 
-  const { horizonColor, midColor, zenithColor, sunDirX, sunDirY, sunDirZ, sunColor, cloudDensity, cloudSpeed } = useControls('Sky', {
-    gradient: folder({
-      horizonColor: { value: '#bfd8e8', label: 'horizon' },
-      midColor: { value: '#82b8e2', label: 'mid' },
-      zenithColor: { value: '#4a8cc8', label: 'zenith' },
-    }),
-    sun: folder({
-      sunDirX: { value: 0.3, min: -1, max: 1, step: 0.01, label: 'x' },
-      sunDirY: { value: 0.4, min: 0, max: 1, step: 0.01, label: 'y' },
-      sunDirZ: { value: -0.4, min: -1, max: 1, step: 0.01, label: 'z' },
-      sunColor: { value: '#fff0d0', label: 'color' },
-    }),
+  const { paperColor, scribbleColor, cloudDensity, cloudSpeed } = useControls('Sky', {
+    paperColor:    { value: '#f4ebd9', label: 'paper' },
+    scribbleColor: { value: '#9bb8d4', label: 'scribbles' },
     clouds: folder({
-      cloudDensity: { value: 0.7, min: 0, max: 1, step: 0.01, label: 'density' },
-      cloudSpeed: { value: 1.0, min: 0, max: 5, step: 0.1, label: 'speed' },
+      cloudDensity: { value: 0.65, min: 0, max: 1, step: 0.01, label: 'density' },
+      cloudSpeed:   { value: 0.6,  min: 0, max: 5, step: 0.1, label: 'speed' },
     }),
   })
 
   const uniforms = useMemo(() => ({
     uTime: { value: 0 },
-    uHorizon: { value: new THREE.Color() },
-    uMid: { value: new THREE.Color() },
-    uZenith: { value: new THREE.Color() },
-    uSunDir: { value: new THREE.Vector3() },
-    uSunColor: { value: new THREE.Color() },
-    uCloudDensity: { value: 0.5 },
-    uCloudSpeed: { value: 1 },
+    uPaperColor: { value: new THREE.Color() },
+    uScribbleColor: { value: new THREE.Color() },
+    uCloudDensity: { value: 0.65 },
+    uCloudSpeed: { value: 0.6 },
   }), [])
 
   useFrame((_, delta) => {
     if (!matRef.current) return
     const u = matRef.current.uniforms
     u.uTime.value += delta
-    u.uHorizon.value.set(horizonColor)
-    u.uMid.value.set(midColor)
-    u.uZenith.value.set(zenithColor)
-    u.uSunDir.value.set(sunDirX, sunDirY, sunDirZ).normalize()
-    u.uSunColor.value.set(sunColor)
+    u.uPaperColor.value.set(paperColor)
+    u.uScribbleColor.value.set(scribbleColor)
     u.uCloudDensity.value = cloudDensity
     u.uCloudSpeed.value = cloudSpeed
   })

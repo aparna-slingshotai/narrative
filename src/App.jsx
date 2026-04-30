@@ -7,6 +7,7 @@ import PostFx from './components/PostFx'
 import WhiteVignette from './components/WhiteVignette'
 import TextOverlay from './components/TextOverlay'
 import AmbientAudio from './components/AmbientAudio'
+import PaperOverlay from './components/PaperOverlay'
 import { TouchProvider } from './hooks/useTouch'
 
 export default function App() {
@@ -31,6 +32,7 @@ export default function App() {
             <PostFx />
           </Suspense>
         </Canvas>
+        <PaperOverlay />
         <WhiteVignette />
         <TextOverlay />
       </TouchProvider>

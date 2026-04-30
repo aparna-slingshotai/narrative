@@ -1,50 +1,37 @@
 import { useEffect, useRef } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
-import { useControls, folder } from 'leva'
+import { useControls } from 'leva'
+import { useSceneStore } from '../state/sceneStore'
 
+// Camera position/lookAt are owned by PathWalker. CameraRig only owns:
+//   - the OrbitControls toggle (for free-look during scene authoring)
+//   - the FOV
 export default function CameraRig() {
   const camera = useThree((s) => s.camera)
   const orbitRef = useRef()
+  const setOrbitMode = useSceneStore((s) => s.setOrbitMode)
 
-  const { orbitMode, posX, posY, posZ, targetX, targetY, targetZ, fov } = useControls('Camera', {
-    orbitMode: { value: false, label: 'Orbit (drag)' },
+  const { orbitMode, fov } = useControls('Camera', {
+    orbitMode: { value: false, label: 'orbit (drag)' },
     fov: { value: 40, min: 15, max: 90, step: 1 },
-    position: folder({
-      posX: { value: 0, min: -10, max: 10, step: 0.1, label: 'x' },
-      posY: { value: 3, min: 0, max: 10, step: 0.1, label: 'y' },
-      posZ: { value: 7, min: 0.5, max: 20, step: 0.1, label: 'z' },
-    }),
-    target: folder({
-      targetX: { value: 0, min: -5, max: 5, step: 0.1, label: 'x' },
-      targetY: { value: 1.8, min: -2, max: 8, step: 0.1, label: 'y' },
-      targetZ: { value: -3, min: -10, max: 5, step: 0.1, label: 'z' },
-    }),
   })
+
+  // mirror orbit toggle into the store so PathWalker can defer
+  useEffect(() => {
+    setOrbitMode(orbitMode)
+  }, [orbitMode, setOrbitMode])
 
   useFrame(() => {
     if (camera.fov !== fov) {
       camera.fov = fov
       camera.updateProjectionMatrix()
     }
-    if (!orbitMode) {
-      camera.position.set(posX, posY, posZ)
-      camera.lookAt(targetX, targetY, targetZ)
-    }
   })
-
-  // Reset OrbitControls target when sliders change while in orbit mode
-  useEffect(() => {
-    if (orbitMode && orbitRef.current) {
-      orbitRef.current.target.set(targetX, targetY, targetZ)
-      orbitRef.current.update()
-    }
-  }, [orbitMode, targetX, targetY, targetZ])
 
   return orbitMode ? (
     <OrbitControls
       ref={orbitRef}
-      target={[targetX, targetY, targetZ]}
       enablePan
       enableZoom
       enableRotate
