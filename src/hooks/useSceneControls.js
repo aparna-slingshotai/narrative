@@ -1,5 +1,13 @@
 import { useControls, folder } from 'leva'
 
+export function useFogControls() {
+  return useControls('Atmosphere', {
+    fogColor: { value: '#bfd8e8', label: 'fog tint' },
+    fogNear: { value: 6, min: 1, max: 30, step: 0.5, label: 'fog near' },
+    fogFar: { value: 18, min: 5, max: 50, step: 0.5, label: 'fog far' },
+  })
+}
+
 export function useGrassControls() {
   return useControls('Grass', {
     touchRadius: { value: 1.4, min: 0.3, max: 6, step: 0.1 },

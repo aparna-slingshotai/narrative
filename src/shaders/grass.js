@@ -17,7 +17,8 @@ export const grassVertexShader = /* glsl */ `
   varying float vHeight;
   varying float vAo;
   varying float vTint;
-  varying float vTouchInfluence; // smooth 0..1 based on distance to nearest active trail point
+  varying float vTouchInfluence;
+  varying float vCameraDist;
 
   vec3 rotateY(vec3 p, float a) {
     float c = cos(a), s = sin(a);
@@ -66,6 +67,8 @@ export const grassVertexShader = /* glsl */ `
     vHeight = h;
     vAo = smoothstep(0.0, 0.4, h);
     vTint = tint;
+    vec4 worldPos = modelMatrix * vec4(pos, 1.0);
+    vCameraDist = length(worldPos.xyz - cameraPosition);
 
     gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
   }
@@ -73,15 +76,17 @@ export const grassVertexShader = /* glsl */ `
 
 export const grassFragmentShader = /* glsl */ `
   uniform float uTouchHighlight;
+  uniform vec3 uFogColor;
+  uniform float uFogNear;
+  uniform float uFogFar;
 
   varying float vHeight;
   varying float vAo;
   varying float vTint;
   varying float vTouchInfluence;
+  varying float vCameraDist;
 
   void main() {
-    // grass colors that blend with the (matching) ground — narrower
-    // value range, less high-contrast tip
     vec3 baseColor = vec3(0.16, 0.30, 0.10);
     vec3 midColor  = vec3(0.26, 0.42, 0.14);
     vec3 tipColor  = vec3(0.42, 0.58, 0.22);
@@ -89,16 +94,17 @@ export const grassFragmentShader = /* glsl */ `
     vec3 color = mix(baseColor, midColor, smoothstep(0.0, 0.55, vHeight));
     color = mix(color, tipColor, smoothstep(0.55, 1.0, vHeight));
 
-    // subtle per-blade hue jitter (less than before)
     color.r += vTint * 0.025;
     color.g += vTint * 0.015;
     color.b -= vTint * 0.02;
 
-    // gentle ambient occlusion at base
     color *= mix(0.7, 1.0, vAo);
 
-    // subtle highlight where the user touches — lifts the patch slightly
     color += vec3(0.18, 0.22, 0.14) * vTouchInfluence * uTouchHighlight;
+
+    // distance fog so the grass field fades into the sky/horizon
+    float fogAmt = smoothstep(uFogNear, uFogFar, vCameraDist);
+    color = mix(color, uFogColor, fogAmt);
 
     gl_FragColor = vec4(color, 1.0);
   }

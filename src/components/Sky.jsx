@@ -9,9 +9,9 @@ export default function Sky() {
 
   const { horizonColor, midColor, zenithColor, sunDirX, sunDirY, sunDirZ, sunColor, cloudDensity, cloudSpeed } = useControls('Sky', {
     gradient: folder({
-      horizonColor: { value: '#fbe5c4', label: 'horizon' },
-      midColor: { value: '#a8c8e8', label: 'mid' },
-      zenithColor: { value: '#5b89c8', label: 'zenith' },
+      horizonColor: { value: '#bfd8e8', label: 'horizon' },
+      midColor: { value: '#82b8e2', label: 'mid' },
+      zenithColor: { value: '#4a8cc8', label: 'zenith' },
     }),
     sun: folder({
       sunDirX: { value: 0.3, min: -1, max: 1, step: 0.01, label: 'x' },
@@ -20,7 +20,7 @@ export default function Sky() {
       sunColor: { value: '#fff0d0', label: 'color' },
     }),
     clouds: folder({
-      cloudDensity: { value: 0.5, min: 0, max: 1, step: 0.01, label: 'density' },
+      cloudDensity: { value: 0.7, min: 0, max: 1, step: 0.01, label: 'density' },
       cloudSpeed: { value: 1.0, min: 0, max: 5, step: 0.1, label: 'speed' },
     }),
   })

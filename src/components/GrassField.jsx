@@ -3,7 +3,7 @@ import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { grassVertexShader, grassFragmentShader, TRAIL_SIZE } from '../shaders/grass'
 import { useTouchTrail, TRAIL_LENGTH } from '../hooks/useTouch'
-import { useGrassControls, useWindControls } from '../hooks/useSceneControls'
+import { useGrassControls, useWindControls, useFogControls } from '../hooks/useSceneControls'
 
 const BLADE_COUNT = 14000
 const FIELD_WIDTH = 9
@@ -52,6 +52,7 @@ export default function GrassField() {
   const touchRef = useTouchTrail({ sampleInterval: 0.04, minDistance: 0.08 })
   const grass = useGrassControls()
   const wind = useWindControls()
+  const fog = useFogControls()
 
   const { geometry, uniforms } = useMemo(() => {
     const geo = createBladeGeometry()
@@ -92,6 +93,9 @@ export default function GrassField() {
       uTouchHighlight: { value: 0.35 },
       uWindSpeed: { value: 1.5 },
       uWindAmplitude: { value: 0.05 },
+      uFogColor: { value: new THREE.Color('#bfd8e8') },
+      uFogNear: { value: 8 },
+      uFogFar: { value: 20 },
     }
 
     return { geometry: geo, uniforms }
@@ -104,6 +108,9 @@ export default function GrassField() {
     uniforms.uTouchHighlight.value = grass.touchHighlight ?? 0.35
     uniforms.uWindSpeed.value = wind.speed
     uniforms.uWindAmplitude.value = wind.grassAmplitude
+    uniforms.uFogColor.value.set(fog.fogColor)
+    uniforms.uFogNear.value = fog.fogNear
+    uniforms.uFogFar.value = fog.fogFar
 
     const data = touchRef.current
     const trailUniform = uniforms.uTrail.value

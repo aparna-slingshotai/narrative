@@ -17,7 +17,7 @@ export default function CameraRig() {
     }),
     target: folder({
       targetX: { value: 0, min: -5, max: 5, step: 0.1, label: 'x' },
-      targetY: { value: 2.5, min: -2, max: 8, step: 0.1, label: 'y' },
+      targetY: { value: 1.8, min: -2, max: 8, step: 0.1, label: 'y' },
       targetZ: { value: -3, min: -10, max: 5, step: 0.1, label: 'z' },
     }),
   })
