@@ -1,0 +1,238 @@
+// Pre-render painted assets via p5.brush (standalone build, no p5.js).
+// Each call creates an offscreen canvas, paints a small image with the
+// brush spec the user provided, and returns a THREE.CanvasTexture.
+//
+// Called once at boot; results are cached.
+
+import * as brush from 'p5.brush/standalone'
+import * as THREE from 'three'
+
+const CACHE = new Map()
+let painterReady = false
+
+// Brush spec — taken verbatim from the user's brush.add() example. This
+// becomes the only brush we use; the colors and weights are tuned per call.
+function ensureBrushDefined() {
+  if (painterReady) return
+  brush.add('myBrush', {
+    type: 'default',
+    weight: 1.1,
+    scatter: 1.8,
+    sharpness: 0.3,
+    grain: 0.78,
+    opacity: 170,
+    spacing: 0.3,
+    noise: 1,
+    pressure: { mode: 'gaussian', curve: [0.21, 0.2], min_max: [1.1, 0.94] },
+    rotate: 'natural',
+  })
+  painterReady = true
+}
+
+function newCanvas(w, h) {
+  const cv = document.createElement('canvas')
+  cv.width = w
+  cv.height = h
+  return cv
+}
+
+// Bake the WebGL2 brush canvas into a 2D canvas with luminance-derived
+// alpha. p5.brush clears to black-with-no-alpha, so we build alpha
+// ourselves from how bright each pixel was painted.
+function bakePainted(webglCanvas) {
+  const W = webglCanvas.width
+  const H = webglCanvas.height
+  const out = document.createElement('canvas')
+  out.width = W
+  out.height = H
+  const ctx = out.getContext('2d')
+  ctx.drawImage(webglCanvas, 0, 0)
+  const img = ctx.getImageData(0, 0, W, H)
+  const d = img.data
+  for (let i = 0; i < d.length; i += 4) {
+    const r = d[i]
+    const g = d[i + 1]
+    const b = d[i + 2]
+    const lum = 0.299 * r + 0.587 * g + 0.114 * b
+    // Black background → alpha 0. Bright strokes → up to fully opaque.
+    d[i + 3] = Math.min(255, Math.round(lum * 1.8))
+  }
+  ctx.putImageData(img, 0, 0)
+  return out
+}
+
+function commitTexture(webglCanvas) {
+  const baked = bakePainted(webglCanvas)
+  const tex = new THREE.CanvasTexture(baked)
+  tex.colorSpace = THREE.NoColorSpace
+  tex.minFilter = THREE.LinearFilter
+  tex.magFilter = THREE.LinearFilter
+  tex.wrapS = THREE.RepeatWrapping
+  tex.wrapT = THREE.RepeatWrapping
+  tex.generateMipmaps = false
+  tex.needsUpdate = true
+  return tex
+}
+
+// Paint a grass-clump silhouette. Several thin upward strokes radiating
+// from a base point; the brush spec gives them grain + noise so each
+// stroke breaks up.
+function paintGrassClump(W = 256, H = 384) {
+  ensureBrushDefined()
+  const cv = newCanvas(W, H)
+  brush.load(cv)
+  brush.scaleBrushes(1.5)
+  brush.angleMode(brush.RADIANS)
+  brush.seed(7)
+  brush.clear('rgba(0,0,0,0)') // transparent background
+
+  // strokes from base outward and upward — a tuft of grass
+  const baseY = H * 0.95
+  const baseX = W * 0.5
+  const colors = ['#2d4416', '#3c5a1f', '#4d702a', '#5e8632', '#7ba33a', '#9bc04b']
+  const NUM_STROKES = 14
+  for (let i = 0; i < NUM_STROKES; i++) {
+    const lean = (Math.random() - 0.5) * 0.55       // ±~30°
+    const len = H * (0.55 + Math.random() * 0.40)
+    const tipX = baseX + Math.sin(lean) * len + (Math.random() - 0.5) * 18
+    const tipY = baseY - Math.cos(lean) * len
+    const c = colors[Math.floor(Math.random() * colors.length)]
+    brush.set('myBrush', c, 0.9 + Math.random() * 0.5)
+    brush.line(baseX + (Math.random() - 0.5) * 14, baseY, tipX, tipY)
+  }
+  brush.render()
+  brush.load() // detach
+  return commitTexture(cv)
+}
+
+// A single drooping foliage stroke for tree leaves — a wide curved arc.
+function paintLeafStroke(W = 384, H = 192) {
+  ensureBrushDefined()
+  const cv = newCanvas(W, H)
+  brush.load(cv)
+  brush.scaleBrushes(2.4)
+  brush.angleMode(brush.RADIANS)
+  brush.seed(13)
+  brush.clear('rgba(0,0,0,0)')
+
+  // 3-4 overlapping arcs forming the painted leaf cluster
+  const colors = ['#3a5e1c', '#4f7426', '#6a932f', '#8db640']
+  for (let i = 0; i < 4; i++) {
+    const baseY = H * (0.25 + i * 0.05)
+    const yEnd = baseY + 14 + Math.random() * 18
+    const startX = 18 + Math.random() * 12
+    const endX = W - 24 - Math.random() * 16
+    const cpY = baseY - 32 - Math.random() * 16 // arc up
+    brush.set('myBrush', colors[i % colors.length], 1.1 - i * 0.08)
+    brush.spline([
+      [startX, baseY],
+      [(startX + endX) * 0.5, cpY],
+      [endX, yEnd],
+    ], 0.5)
+  }
+  brush.render()
+  brush.load()
+  return commitTexture(cv)
+}
+
+// A water-stripe stamp — long horizontal painted streaks for the river.
+function paintWaterStripe(W = 512, H = 128) {
+  ensureBrushDefined()
+  const cv = newCanvas(W, H)
+  brush.load(cv)
+  brush.scaleBrushes(2)
+  brush.angleMode(brush.RADIANS)
+  brush.seed(31)
+  brush.clear('rgba(0,0,0,0)')
+
+  const colors = ['#5e87b3', '#7ea8cf', '#a1c0dc', '#cae0ee', '#e8f0f8']
+  for (let i = 0; i < 14; i++) {
+    const y = (i + 0.5) * (H / 14) + (Math.random() - 0.5) * 6
+    const x0 = -10 + Math.random() * 12
+    const x1 = W + Math.random() * 12
+    brush.set('myBrush', colors[i % colors.length], 0.7 + Math.random() * 0.6)
+    brush.line(x0, y, x1, y + (Math.random() - 0.5) * 4)
+  }
+  brush.render()
+  brush.load()
+  return commitTexture(cv)
+}
+
+// Ground stroke — long horizontal painted hatches for tile-friendly meadow texture.
+function paintGroundStroke(W = 512, H = 256) {
+  ensureBrushDefined()
+  const cv = newCanvas(W, H)
+  brush.load(cv)
+  brush.scaleBrushes(2.2)
+  brush.angleMode(brush.RADIANS)
+  brush.seed(57)
+  brush.clear('rgba(0,0,0,0)')
+
+  const colors = ['#3d5a1d', '#557428', '#7c9648', '#a3b562']
+  for (let i = 0; i < 22; i++) {
+    const y = Math.random() * H
+    const x0 = -20 + Math.random() * 30
+    const x1 = W + Math.random() * 20
+    brush.set('myBrush', colors[i % colors.length], 0.6 + Math.random() * 0.6)
+    brush.line(x0, y, x1, y + (Math.random() - 0.5) * 6)
+  }
+  brush.render()
+  brush.load()
+  return commitTexture(cv)
+}
+
+// Sky scribble — sketchy blue marks for the cloud band.
+function paintSkyScribble(W = 768, H = 256) {
+  ensureBrushDefined()
+  const cv = newCanvas(W, H)
+  brush.load(cv)
+  brush.scaleBrushes(2.5)
+  brush.angleMode(brush.RADIANS)
+  brush.seed(91)
+  brush.clear('rgba(0,0,0,0)')
+
+  const colors = ['#7ba1c8', '#9bb8d4', '#c5d6e6']
+  for (let i = 0; i < 9; i++) {
+    const y = 30 + Math.random() * (H - 60)
+    const x0 = 20 + Math.random() * 60
+    const x1 = W - 20 - Math.random() * 60
+    brush.set('myBrush', colors[i % colors.length], 0.5 + Math.random() * 0.4)
+    // wavy scribble — short zigzag strokes
+    const SEG = 6
+    for (let s = 0; s < SEG; s++) {
+      const t0 = s / SEG, t1 = (s + 1) / SEG
+      brush.line(
+        x0 + (x1 - x0) * t0, y + ((s % 2) ? -6 : 6),
+        x0 + (x1 - x0) * t1, y + ((s % 2) ? 6 : -6),
+      )
+    }
+  }
+  brush.render()
+  brush.load()
+  return commitTexture(cv)
+}
+
+export function paintAllAssets() {
+  if (CACHE.size > 0) return Object.fromEntries(CACHE)
+  try {
+    CACHE.set('grass', paintGrassClump())
+    CACHE.set('leaf', paintLeafStroke())
+    CACHE.set('water', paintWaterStripe())
+    CACHE.set('ground', paintGroundStroke())
+    CACHE.set('sky', paintSkyScribble())
+  } catch (e) {
+    console.error('[paintAssets] failed:', e)
+  }
+  return Object.fromEntries(CACHE)
+}
+
+// React hook — paints once on first mount, returns the map. Painting
+// happens after first render so window/document are guaranteed available.
+import { useEffect, useState } from 'react'
+export function useScenePaint() {
+  const [assets, setAssets] = useState(null)
+  useEffect(() => {
+    setAssets(paintAllAssets())
+  }, [])
+  return assets
+}

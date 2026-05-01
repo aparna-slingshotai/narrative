@@ -13,6 +13,7 @@
     "@react-three/fiber": "^8.17.0",
     "@react-three/postprocessing": "^2.16.3",
     "leva": "^0.10.1",
+    "p5.brush": "^2.1.4-beta",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "three": "^0.170.0",

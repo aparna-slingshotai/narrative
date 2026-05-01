@@ -1,6 +1,7 @@
 import { useRef, useMemo } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
+import { useScenePaint } from '../scene/paintAssets'
 
 const groundVertexShader = /* glsl */ `
   uniform float uHillHeight;
@@ -8,7 +9,6 @@ const groundVertexShader = /* glsl */ `
   varying vec3 vWorldPos;
   varying float vElevation;
 
-  // 2D pseudo-noise (smooth, cheap)
   float hash(vec2 p) { return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
   float noise2(vec2 p) {
     vec2 i = floor(p), f = fract(p);
@@ -32,9 +32,7 @@ const groundVertexShader = /* glsl */ `
 
   void main() {
     vec3 pos = position;
-    // base hill: rise toward the back (away from camera) so horizon is a slope
-    float backRise = smoothstep(-2.0, -22.0, pos.y) * uHillHeight * 1.5; // pos.y is depth before rotation
-    // gentle rolling noise across the meadow
+    float backRise = smoothstep(-2.0, -22.0, pos.y) * uHillHeight * 1.5;
     float roll = fbm(pos.xy * uHillScale) * uHillHeight * 0.5;
     pos.z = backRise + roll;
 
@@ -52,16 +50,32 @@ const groundFragmentShader = /* glsl */ `
   uniform vec3 uFogColor;
   uniform float uFogNear;
   uniform float uFogFar;
+  uniform sampler2D uBrush;
+  uniform float uHasBrush;
+  uniform float uBrushScale;
+  uniform float uBrushIntensity;
 
   varying vec3 vWorldPos;
   varying float vElevation;
 
   void main() {
-    // shade darker in valleys, brighter on hilltops
     float shade = smoothstep(-0.2, 0.6, vElevation);
     vec3 color = mix(uShadowColor, uColor, shade);
 
-    // distance fog so back of meadow blends into sky
+    if (uHasBrush > 0.5) {
+      // Tile the painted brush stamp across the meadow. Use the alpha
+      // (luminance-derived from p5.brush) as an intensity mask: where the
+      // brush stamped, we lighten/lift; elsewhere the base meadow color
+      // shows through.
+      vec2 brushUv = vWorldPos.xz / uBrushScale;
+      vec4 stamp = texture2D(uBrush, brushUv);
+      float mask = stamp.a * uBrushIntensity;
+      // tint brush color toward the meadow palette so painted strokes
+      // don't introduce foreign hues
+      vec3 brushColor = stamp.rgb * 1.4;
+      color = mix(color, brushColor, mask * 0.6);
+    }
+
     float dist = length(vWorldPos - cameraPosition);
     float fogAmt = smoothstep(uFogNear, uFogFar, dist);
     color = mix(color, uFogColor, fogAmt);
@@ -72,6 +86,7 @@ const groundFragmentShader = /* glsl */ `
 
 export default function Ground({ color = '#3a6b1f', fogColor = '#bcd8ec', fogNear = 6, fogFar = 18 }) {
   const matRef = useRef()
+  const painted = useScenePaint()
 
   const uniforms = useMemo(() => ({
     uColor: { value: new THREE.Color(color) },
@@ -81,6 +96,10 @@ export default function Ground({ color = '#3a6b1f', fogColor = '#bcd8ec', fogNea
     uFogFar: { value: fogFar },
     uHillHeight: { value: 1.1 },
     uHillScale: { value: 0.22 },
+    uBrush: { value: null },
+    uHasBrush: { value: 0 },
+    uBrushScale: { value: 4 },
+    uBrushIntensity: { value: 1 },
   }), [])
 
   useFrame(() => {
@@ -90,6 +109,10 @@ export default function Ground({ color = '#3a6b1f', fogColor = '#bcd8ec', fogNea
     u.uFogColor.value.set(fogColor)
     u.uFogNear.value = fogNear
     u.uFogFar.value = fogFar
+    if (painted?.ground && u.uBrush.value !== painted.ground) {
+      u.uBrush.value = painted.ground
+      u.uHasBrush.value = 1
+    }
   })
 
   return (
