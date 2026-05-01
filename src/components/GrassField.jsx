@@ -6,9 +6,9 @@ import { useTouchTrail, TRAIL_LENGTH } from '../hooks/useTouch'
 import { useGrassControls, useWindControls, useFogControls } from '../hooks/useSceneControls'
 import { distanceToRiverSq, RIVER_WIDTH, RIVER_BANK_WIDTH } from '../scene/river'
 
-const BLADE_COUNT = 17500
-const FIELD_WIDTH = 11
-const FIELD_DEPTH = 14
+const BLADE_COUNT = 32000
+const FIELD_WIDTH = 14
+const FIELD_DEPTH = 17
 const BLADE_SEGMENTS = 6
 
 function createBladeGeometry() {
@@ -84,7 +84,8 @@ export default function GrassField() {
       attempts++
       const r = Math.random()
       const x = (Math.random() - 0.5) * FIELD_WIDTH
-      const z = (1 - r * r) * -FIELD_DEPTH + 2.5
+      // softer camera-side bias so mid-distance gets more density
+      const z = (1 - r * 0.55) * -FIELD_DEPTH + 2.5
       const distSq = distanceToRiverSq(x, z)
       const dist = Math.sqrt(distSq)
       if (dist < HARD_EXCLUSION) continue

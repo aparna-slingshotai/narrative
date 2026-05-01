@@ -9,13 +9,13 @@ import { useControls, folder } from 'leva'
 export default function AmbientAudio() {
   const ctrl = useControls('Ambient Audio', {
     enabled: { value: true, label: 'enabled' },
-    volume: { value: 0.4, min: 0, max: 1, step: 0.01 },
+    volume: { value: 0.07, min: 0, max: 1, step: 0.01 },
     breeze: folder({
-      windAmount: { value: 0.7, min: 0, max: 1, step: 0.01, label: 'wind' },
-      gustSpeed: { value: 0.18, min: 0.02, max: 1, step: 0.01, label: 'gust speed' },
+      windAmount: { value: 0.18, min: 0, max: 1, step: 0.01, label: 'wind' },
+      gustSpeed: { value: 0.07, min: 0.02, max: 1, step: 0.01, label: 'gust speed' },
       brightness: { value: 480, min: 100, max: 2000, step: 10, label: 'brightness (Hz)' },
     }),
-    bassAmount: { value: 0.25, min: 0, max: 1, step: 0.01, label: 'low hum' },
+    bassAmount: { value: 0.12, min: 0, max: 1, step: 0.01, label: 'low hum' },
   })
 
   const audioRef = useRef(null)
