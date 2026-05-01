@@ -113,9 +113,16 @@ const BUFFER_A_FRAG = /* glsl */ `
     float trunkH = 4.5 * s;
     float trunkR = 0.05 * s;
     float trunk = sdCappedCylinder(q - vec3(0, trunkH * 0.5, 0), trunkR, trunkH * 0.5);
+    // Per-tree wind sway — gentle horizontal translation of the foliage.
+    // Phase derived from tree position so neighboring trees move out of sync.
+    float phase = dot(t.xy, vec2(7.3, 4.1));
+    vec2 sway = vec2(
+      sin(iTime * 1.1 + phase),
+      cos(iTime * 0.83 + phase + 1.0)
+    ) * 0.10 * s;
     // Foliage = ellipsoid lightly perturbed so the silhouette breaks into
     // leafy clumps. Amplitude kept small so sphere-tracing still converges.
-    vec3 fp = q - vec3(0.0, trunkH * 0.65, 0.0);
+    vec3 fp = q - vec3(sway.x, trunkH * 0.65, sway.y);
     vec3 fr = vec3(1.1 * s, 1.75 * s, 1.1 * s);
     float ellip = sdEllipsoid(fp, fr);
     float lumps = (fbm(fp.xz * 3.0 + fp.y * 2.0) - 0.5) * 0.18
@@ -339,55 +346,27 @@ const IMAGE_FRAG = /* glsl */ `
     color.rgb = mix(color.rgb, layer.rgb, layer.a);
   }
 
-  // Procedural grass tufts — short vertical brush strokes layered on top of
-  // the painted ground. Avoids raymarching individual blades; the strokes
-  // taper with screen y so foreground reads denser than midground.
-  float grassTufts(vec2 uv, float matID) {
-    if (abs(matID - MAT_GROUND) > 0.5) return 0.0;
-    // Cell grid skewed tall so each cell holds a single thin vertical mark.
-    vec2 g = uv * vec2(180.0, 70.0);
-    vec2 ci = floor(g);
-    vec2 cf = fract(g);
-    float n = hash21(ci);
-    // Skip 35% of cells so the field has gaps.
-    if (n < 0.35) return 0.0;
-    // Each blade: wedge that's wide at base (cf.y=1, screen-down) and
-    // tapers toward the tip (cf.y=0, screen-up). x-jitter from cell hash.
-    float cx = (n - 0.5) * 0.8;
-    float dx = abs(cf.x - 0.5 - cx);
-    float baseShape = (1.0 - cf.y);                 // 1 at bottom of cell
-    float blade = step(dx, 0.18 * baseShape * baseShape);
-    // Perspective: stronger near bottom of frame, fade out toward horizon.
-    blade *= smoothstep(0.78, 0.20, uv.y);
-    return blade;
-  }
-
   void main() {
     initMaterials();
     vec2 uv = gl_FragCoord.xy / iResolution;
+
+    // Hand-drawn "boil" — quantize time to 8 fps and use that tick as a
+    // seed for a low-amplitude UV jitter. Silhouettes wiggle each tick the
+    // way pencil lines do in stop-motion / rotoscope animation.
+    float boilTick = floor(iTime * 8.0);
+    vec2 jitter = vec2(
+      vnoise(uv * 110.0 + boilTick * 13.7),
+      vnoise(uv * 110.0 - boilTick * 9.3 + 17.0)
+    ) - 0.5;
+    vec2 buv = uv + jitter * 0.0040;
+
     vec4 color = vec4(0.957, 0.922, 0.851, 1.0); // cream paper base
-    paintLayer(color, uv, MAT_SKY);
-    paintLayer(color, uv, MAT_GROUND);
-    paintLayer(color, uv, MAT_BANK);
-    paintLayer(color, uv, MAT_WATER);
-
-    // Grass tufts — applied after ground/bank/water so they sit on top of
-    // the meadow, but before trees so trunks/foliage occlude them.
-    float matHere = texture2D(tBufferA, uv).x;
-    float tuft = grassTufts(uv, matHere);
-    if (tuft > 0.5) {
-      // Two-tone stipple: dark base + lighter highlight in upper part.
-      vec3 grassDark  = vec3(0.18, 0.32, 0.10);
-      vec3 grassMid   = vec3(0.36, 0.50, 0.18);
-      // Cheap "tip lighter" by sampling a second pass of the cell coord.
-      vec2 g2 = uv * vec2(180.0, 70.0);
-      float tipMix = smoothstep(0.45, 0.0, fract(g2.y));
-      vec3 grassCol = mix(grassDark, grassMid, tipMix);
-      color.rgb = mix(color.rgb, grassCol, 0.85);
-    }
-
-    paintLayer(color, uv, MAT_TRUNK);
-    paintLayer(color, uv, MAT_FOLIAGE);
+    paintLayer(color, buv, MAT_SKY);
+    paintLayer(color, buv, MAT_GROUND);
+    paintLayer(color, buv, MAT_BANK);
+    paintLayer(color, buv, MAT_WATER);
+    paintLayer(color, buv, MAT_TRUNK);
+    paintLayer(color, buv, MAT_FOLIAGE);
     gl_FragColor = color;
   }
 `

@@ -14,7 +14,7 @@ export default function CameraRig() {
 
   const { orbitMode, fov } = useControls('Camera', {
     orbitMode: { value: false, label: 'orbit (drag)' },
-    fov: { value: 40, min: 15, max: 90, step: 1 },
+    fov: { value: 71, min: 15, max: 120, step: 1 },
   })
 
   // mirror orbit toggle into the store so PathWalker can defer
