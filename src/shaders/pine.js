@@ -54,12 +54,12 @@ export const frondFragmentShader = /* glsl */ `
   float hash(vec2 p){ return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
 
   void main() {
-    // sample painted brush stamp at vUv; the alpha+luminance now act as
-    // a TEXTURE on the full frond (no discard), so the foliage stays
-    // solid but reads as brush-painted instead of clean vector.
+    // sample painted brush stamp; pixels outside strokes get discarded
+    // so each frond breaks into actual brush marks (sketchy silhouette).
     vec4 stamp = vec4(1.0);
     if (uHasBrush > 0.5) {
       stamp = texture2D(uBrush, vUv);
+      if (stamp.a < uAlphaThreshold) discard;
     }
 
     // along the frond: dark at root, mid in middle, light near tip
@@ -74,13 +74,9 @@ export const frondFragmentShader = /* glsl */ `
     color *= 0.93 + hash(nUv) * 0.10;
 
     if (uHasBrush > 0.5) {
-      // brush adds value variation: where the stamp has paint, brighten;
-      // where it's empty, slightly darken. Frond stays fully visible
-      // but with painted-stroke quality across its surface.
-      float painted = stamp.a; // 0 = no stroke, 1 = fully painted
-      color *= mix(0.78, 1.18, painted);
-      // mix in stroke color (multiplicative tint) for hand-painted variation
-      color = mix(color, color * stamp.rgb * 2.0, painted * 0.35);
+      // multiply by stroke luminance for painted value variation
+      float lum = dot(stamp.rgb, vec3(0.299, 0.587, 0.114));
+      color *= 0.55 + lum * 1.1;
     }
 
     float dist = length(vWorldPos - cameraPosition);

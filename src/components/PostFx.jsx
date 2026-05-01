@@ -1,54 +1,57 @@
 import { EffectComposer, Bloom } from '@react-three/postprocessing'
 import { useControls, folder } from 'leva'
-import { Painterly } from './effects/PainterlyEffect'
+import { Watercolor } from './effects/WatercolorEffect'
+import { Outline } from './effects/OutlineEffect'
 
 export default function PostFx() {
-  const {
-    enabled,
-    bloomIntensity,
-    bloomThreshold,
-    watercolorEnabled,
-    washStrength,
-    washRadius,
-    wetEdge,
-    pigment,
-    posterize,
-    grainAmount,
-  } = useControls('Post FX', {
+  const ctrl = useControls('Post FX', {
     enabled: { value: true },
     bloom: folder({
       bloomIntensity: { value: 0.05, min: 0, max: 3, step: 0.05, label: 'intensity' },
       bloomThreshold: { value: 0.41, min: 0, max: 1, step: 0.01, label: 'threshold' },
     }),
     watercolor: folder({
-      watercolorEnabled: { value: true, label: 'enabled' },
-      washStrength: { value: 0.00, min: 0, max: 1, step: 0.01, label: 'wash strength' },
-      washRadius:   { value: 0.5,  min: 0.5, max: 12, step: 0.1, label: 'wash radius (px)' },
-      wetEdge:      { value: 0.00, min: 0, max: 6, step: 0.05, label: 'wet edge' },
-      pigment:      { value: 0.00, min: 0, max: 0.5, step: 0.005, label: 'pigment variance' },
-      posterize:    { value: 32,   min: 0, max: 32, step: 1, label: 'posterize levels' },
-      grainAmount:  { value: 0.21, min: 0, max: 0.25, step: 0.005, label: 'shader grain' },
+      watercolorEnabled: { value: false, label: 'enabled' },
+      blurRadius: { value: 1.6, min: 0, max: 6, step: 0.1, label: 'blur radius' },
+      paperGrain: { value: 0.45, min: 0, max: 1, step: 0.01, label: 'paper grain' },
+      edgeIntensity: { value: 0.8, min: 0, max: 2, step: 0.05, label: 'wet edge' },
+      shadowStrength: { value: 0.25, min: 0, max: 1, step: 0.01, label: 'shadow' },
+      shapeThreshold: { value: 0.05, min: 0, max: 0.5, step: 0.01, label: 'shape threshold' },
+    }),
+    outlines: folder({
+      outlineEnabled: { value: false, label: 'enabled' },
+      thickness: { value: 1.2, min: 0.4, max: 4, step: 0.1, label: 'thickness' },
+      depthThreshold: { value: 0.04, min: 0, max: 0.5, step: 0.005, label: 'depth threshold' },
+      outlineColor: { value: '#3a2818', label: 'color' },
+      outlineIntensity: { value: 0.9, min: 0, max: 1, step: 0.01, label: 'intensity' },
     }),
   })
 
-  if (!enabled) return null
+  if (!ctrl.enabled) return null
 
   return (
     <EffectComposer multisampling={0}>
       <Bloom
-        intensity={bloomIntensity}
-        luminanceThreshold={bloomThreshold}
+        intensity={ctrl.bloomIntensity}
+        luminanceThreshold={ctrl.bloomThreshold}
         luminanceSmoothing={0.3}
         mipmapBlur
       />
-      {watercolorEnabled ? (
-        <Painterly
-          washStrength={washStrength}
-          washRadius={washRadius}
-          wetEdge={wetEdge}
-          pigment={pigment}
-          posterize={posterize}
-          grainAmount={grainAmount}
+      {ctrl.watercolorEnabled ? (
+        <Watercolor
+          blurRadius={ctrl.blurRadius}
+          paperGrain={ctrl.paperGrain}
+          edgeIntensity={ctrl.edgeIntensity}
+          shadowStrength={ctrl.shadowStrength}
+          shapeThreshold={ctrl.shapeThreshold}
+        />
+      ) : null}
+      {ctrl.outlineEnabled ? (
+        <Outline
+          thickness={ctrl.thickness}
+          depthThreshold={ctrl.depthThreshold}
+          color={ctrl.outlineColor}
+          intensity={ctrl.outlineIntensity}
         />
       ) : null}
     </EffectComposer>

@@ -57,7 +57,7 @@ export const waterFragmentShader = /* glsl */ `
     float u2 = vUv.y * 14.0 - uTime * 0.45;
     float ripples = sin(u2 + sin(vUv.x * 7.0) * 1.6) * 0.5 + 0.5;
     ripples *= smoothstep(0.55, 0.8, vnoise(vec2(vUv.x * 9.0, u2 * 0.9)));
-    color = mix(color, uHighlight, ripples * 0.55);
+    color = mix(color, uHighlight, ripples * 0.30);
 
     // sharp short highlights — brushy "sparkles"
     float u3 = vUv.y * 60.0 + uTime * 1.4;
@@ -67,11 +67,12 @@ export const waterFragmentShader = /* glsl */ `
 
     // painted brush variation — sample painted water stripe along the ribbon
     if (uHasBrush > 0.5) {
-      vec2 brushUv = vec2(vUv.x, vUv.y * 0.4 - uTime * 0.05);
+      // chunkier scale + scrolling — strokes read clearly as river ripples
+      vec2 brushUv = vec2(vUv.x * 1.2, vUv.y * 0.6 - uTime * 0.08);
       vec4 stamp = texture2D(uBrush, brushUv);
       float painted = stamp.a;
-      color *= mix(0.85, 1.18, painted);
-      color = mix(color, color * stamp.rgb * 1.8 + uHighlight * 0.1, painted * 0.30);
+      color *= mix(0.78, 1.25, painted);
+      color = mix(color, color * stamp.rgb * 2.2 + uHighlight * 0.15, painted * 0.55);
     }
 
     // soft side fade to bank (no hard rectangle edge)

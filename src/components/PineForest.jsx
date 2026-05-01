@@ -173,7 +173,7 @@ export default function PineForest() {
       autumnLight: { value: '#f0d182', label: 'highlight' },
     }),
     trunkColor: { value: '#9a6242', label: 'trunk' },
-    leafBrushAlpha: { value: 0.15, min: 0, max: 0.6, step: 0.01, label: 'leaf brush cutoff' },
+    leafBrushAlpha: { value: 0.08, min: 0, max: 0.6, step: 0.01, label: 'leaf brush cutoff' },
   })
 
   const greenMaterial = useMemo(
