@@ -141,6 +141,8 @@ export const grassFragmentShader = /* glsl */ `
   uniform vec3 uFogColor;
   uniform float uFogNear;
   uniform float uFogFar;
+  uniform sampler2D uBrush;
+  uniform float uHasBrush;
 
   varying float vHeight;
   varying float vAo;
@@ -157,6 +159,16 @@ export const grassFragmentShader = /* glsl */ `
     color.b -= vTint * 0.05 * uTintAmount;
 
     color *= mix(0.7, 1.0, vAo);
+
+    // painted brush variation along the blade — uv goes 0..1 along height
+    if (uHasBrush > 0.5) {
+      // each blade samples a different region of the stamp via tint seed
+      vec2 brushUv = vec2(0.5 + vTint * 0.4, vHeight);
+      vec4 stamp = texture2D(uBrush, brushUv);
+      float painted = stamp.a;
+      color *= mix(0.78, 1.18, painted);
+      color = mix(color, color * stamp.rgb * 2.0, painted * 0.30);
+    }
 
     color += vec3(0.18, 0.22, 0.14) * vTouchInfluence * uTouchHighlight;
 

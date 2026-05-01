@@ -54,17 +54,12 @@ export const frondFragmentShader = /* glsl */ `
   float hash(vec2 p){ return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
 
   void main() {
-    // sample painted brush stamp; per-frond seed offsets the lookup so
-    // each frond samples a different region of the stamp (more variety)
-    float seedX = fract(vTint * 0.5 + 0.31);
-    float seedY = fract(vTint * 0.27 + 0.07);
-    vec2 brushUv = vec2(vUv.x + seedX * 0.0, vUv.y + seedY * 0.0);
+    // sample painted brush stamp at vUv; the alpha+luminance now act as
+    // a TEXTURE on the full frond (no discard), so the foliage stays
+    // solid but reads as brush-painted instead of clean vector.
     vec4 stamp = vec4(1.0);
     if (uHasBrush > 0.5) {
-      stamp = texture2D(uBrush, brushUv);
-      // discard pixels outside the painted strokes — frond ribbon
-      // breaks up into brush marks instead of reading as a solid leaf
-      if (stamp.a < uAlphaThreshold) discard;
+      stamp = texture2D(uBrush, vUv);
     }
 
     // along the frond: dark at root, mid in middle, light near tip
@@ -79,10 +74,13 @@ export const frondFragmentShader = /* glsl */ `
     color *= 0.93 + hash(nUv) * 0.10;
 
     if (uHasBrush > 0.5) {
-      // multiply by stroke luminance so darker brush regions pull color
-      // down — painted strokes read with their own value variation
-      float lum = dot(stamp.rgb, vec3(0.299, 0.587, 0.114));
-      color *= 0.55 + lum * 1.1;
+      // brush adds value variation: where the stamp has paint, brighten;
+      // where it's empty, slightly darken. Frond stays fully visible
+      // but with painted-stroke quality across its surface.
+      float painted = stamp.a; // 0 = no stroke, 1 = fully painted
+      color *= mix(0.78, 1.18, painted);
+      // mix in stroke color (multiplicative tint) for hand-painted variation
+      color = mix(color, color * stamp.rgb * 2.0, painted * 0.35);
     }
 
     float dist = length(vWorldPos - cameraPosition);

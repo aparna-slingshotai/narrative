@@ -5,6 +5,7 @@ import { grassVertexShader, grassFragmentShader, TRAIL_SIZE, MAX_RIVER_POINTS } 
 import { useTouchTrail, TRAIL_LENGTH } from '../hooks/useTouch'
 import { useGrassControls, useWindControls, useFogControls } from '../hooks/useSceneControls'
 import { RIVER_POINTS, RIVER_WIDTH } from '../scene/river'
+import { useScenePaint } from '../scene/paintAssets'
 
 const BLADE_COUNT = 32000
 // Tile size — wraps around the camera each frame so the visible area
@@ -70,6 +71,7 @@ export default function GrassField() {
   const grass = useGrassControls()
   const wind = useWindControls()
   const fog = useFogControls()
+  const painted = useScenePaint()
 
   const { geometry, uniforms } = useMemo(() => {
     const geo = createBladeGeometry()
@@ -128,6 +130,8 @@ export default function GrassField() {
       uRiverPoints: { value: buildRiverUniformArray() },
       uRiverPointsCount: { value: RIVER_POINTS.length },
       uRiverExclusionRadius: { value: RIVER_WIDTH * 0.42 },
+      uBrush: { value: null },
+      uHasBrush: { value: 0 },
     }
 
     return { geometry: geo, uniforms }
@@ -150,6 +154,11 @@ export default function GrassField() {
 
     // Camera-following: re-center the grass tile on the camera each frame
     uniforms.uFieldOffset.value.set(state.camera.position.x, state.camera.position.z)
+
+    if (painted?.grass && uniforms.uBrush.value !== painted.grass) {
+      uniforms.uBrush.value = painted.grass
+      uniforms.uHasBrush.value = 1
+    }
 
     const data = touchRef.current
     const trailUniform = uniforms.uTrail.value

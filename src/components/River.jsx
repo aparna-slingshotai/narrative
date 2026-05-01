@@ -9,6 +9,7 @@ import {
 } from '../shaders/water'
 import { useFogControls } from '../hooks/useSceneControls'
 import { RIVER_POINTS } from '../scene/river'
+import { useScenePaint } from '../scene/paintAssets'
 
 // Build a ribbon of given width following a CatmullRom curve through
 // the centerline points.
@@ -50,6 +51,7 @@ export default function River() {
   const matRef = useRef()
   const bankRef = useRef()
   const fog = useFogControls()
+  const painted = useScenePaint()
 
   const ctrl = useControls('River', {
     enabled:    { value: true, label: 'enabled' },
@@ -83,6 +85,8 @@ export default function River() {
       uFogNear: { value: fog.fogNear },
       uFogFar: { value: fog.fogFar },
       uUvTile: { value: 6 }, // matches buildRibbonGeometry uvTile arg below
+      uBrush: { value: null },
+      uHasBrush: { value: 0 },
     }),
     []
   )
@@ -95,6 +99,8 @@ export default function River() {
       uFogNear: { value: fog.fogNear },
       uFogFar: { value: fog.fogFar },
       uUvTile: { value: 1 },
+      uBrush: { value: null },
+      uHasBrush: { value: 0 },
     }),
     []
   )
@@ -118,6 +124,14 @@ export default function River() {
       u.uFogColor.value.set(fog.fogColor)
       u.uFogNear.value = fog.fogNear
       u.uFogFar.value = fog.fogFar
+    }
+    if (painted?.water && matRef.current?.uniforms.uBrush.value !== painted.water) {
+      matRef.current.uniforms.uBrush.value = painted.water
+      matRef.current.uniforms.uHasBrush.value = 1
+    }
+    if (painted?.ground && bankRef.current?.uniforms.uBrush.value !== painted.ground) {
+      bankRef.current.uniforms.uBrush.value = painted.ground
+      bankRef.current.uniforms.uHasBrush.value = 1
     }
   })
 

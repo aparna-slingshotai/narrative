@@ -21,6 +21,8 @@ export const waterFragmentShader = /* glsl */ `
   uniform float uFogNear;
   uniform float uFogFar;
   uniform float uUvTile; // ribbon length scale — vUv.y goes 0..uUvTile
+  uniform sampler2D uBrush;
+  uniform float uHasBrush;
 
   varying vec2 vUv;
   varying vec3 vWorldPos;
@@ -63,6 +65,15 @@ export const waterFragmentShader = /* glsl */ `
     sparkle *= smoothstep(0.92, 1.0, vnoise(vec2(vUv.x * 22.0, u3 * 0.5)));
     color = mix(color, vec3(1.0), sparkle * 0.45);
 
+    // painted brush variation — sample painted water stripe along the ribbon
+    if (uHasBrush > 0.5) {
+      vec2 brushUv = vec2(vUv.x, vUv.y * 0.4 - uTime * 0.05);
+      vec4 stamp = texture2D(uBrush, brushUv);
+      float painted = stamp.a;
+      color *= mix(0.85, 1.18, painted);
+      color = mix(color, color * stamp.rgb * 1.8 + uHighlight * 0.1, painted * 0.30);
+    }
+
     // soft side fade to bank (no hard rectangle edge)
     float bankFade = abs(vUv.x - 0.5) * 2.0;
     float bankNoise = vnoise(vec2(vUv.y * 18.0, vUv.x * 8.0)) * 0.18;
@@ -96,6 +107,8 @@ export const bankFragmentShader = /* glsl */ `
   uniform float uFogNear;
   uniform float uFogFar;
   uniform float uUvTile;
+  uniform sampler2D uBrush;
+  uniform float uHasBrush;
   varying vec2 vUv;
   varying vec3 vWorldPos;
 
@@ -129,6 +142,15 @@ export const bankFragmentShader = /* glsl */ `
     // dispersed sketchy specks
     float specks = step(0.92, hash(floor(vWorldPos.xz * 28.0)));
     color *= 1.0 - specks * 0.12;
+
+    // painted brush variation on the bank
+    if (uHasBrush > 0.5) {
+      vec2 brushUv = vec2(vUv.x * 0.7, vUv.y * 0.5);
+      vec4 stamp = texture2D(uBrush, brushUv);
+      float painted = stamp.a;
+      color *= mix(0.85, 1.15, painted);
+      color = mix(color, color * stamp.rgb * 1.8, painted * 0.35);
+    }
 
     // outer edge — irregular, paint-bleeds into grass tint
     float edge = abs(vUv.x - 0.5) * 2.0; // 0 at centerline, 1 at outer rim

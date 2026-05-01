@@ -63,17 +63,20 @@ const groundFragmentShader = /* glsl */ `
     vec3 color = mix(uShadowColor, uColor, shade);
 
     if (uHasBrush > 0.5) {
-      // Tile the painted brush stamp across the meadow. Use the alpha
-      // (luminance-derived from p5.brush) as an intensity mask: where the
-      // brush stamped, we lighten/lift; elsewhere the base meadow color
-      // shows through.
-      vec2 brushUv = vWorldPos.xz / uBrushScale;
-      vec4 stamp = texture2D(uBrush, brushUv);
-      float mask = stamp.a * uBrushIntensity;
-      // tint brush color toward the meadow palette so painted strokes
-      // don't introduce foreign hues
-      vec3 brushColor = stamp.rgb * 1.4;
-      color = mix(color, brushColor, mask * 0.6);
+      // sample two tiled rotations of the painted ground stamp and mix
+      // them so the meadow has continuous painted variation everywhere,
+      // not just where the brush had strokes.
+      vec2 uv0 = vWorldPos.xz / uBrushScale;
+      vec2 uv1 = vec2(vWorldPos.z, -vWorldPos.x) / (uBrushScale * 1.7) + 0.43;
+      vec4 s0 = texture2D(uBrush, uv0);
+      vec4 s1 = texture2D(uBrush, uv1);
+      // combined painted intensity 0..1
+      float painted = clamp(max(s0.a, s1.a) * uBrushIntensity, 0.0, 1.0);
+      // value modulation across the whole surface (no patches)
+      color *= mix(0.82, 1.18, painted);
+      // tint with stroke color (multiplicative, 2x to compensate for low rgb)
+      vec3 brushTint = max(s0.rgb, s1.rgb) * 2.2;
+      color = mix(color, color * brushTint, painted * 0.45);
     }
 
     float dist = length(vWorldPos - cameraPosition);
