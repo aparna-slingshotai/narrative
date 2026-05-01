@@ -7,25 +7,27 @@ export default function PostFx() {
     enabled,
     bloomIntensity,
     bloomThreshold,
-    painterlyEnabled,
-    strokeStrength,
-    strokeScale,
+    watercolorEnabled,
+    washStrength,
+    washRadius,
+    wetEdge,
+    pigment,
     posterize,
     grainAmount,
-    edgeBleed,
   } = useControls('Post FX', {
     enabled: { value: true },
     bloom: folder({
       bloomIntensity: { value: 0.35, min: 0, max: 3, step: 0.05, label: 'intensity' },
       bloomThreshold: { value: 0.95, min: 0, max: 1, step: 0.01, label: 'threshold' },
     }),
-    painterly: folder({
-      painterlyEnabled: { value: true, label: 'enabled' },
-      strokeStrength: { value: 0.55, min: 0, max: 1, step: 0.01, label: 'stroke strength' },
-      strokeScale:    { value: 220,  min: 40, max: 600, step: 10, label: 'stroke scale' },
-      posterize:      { value: 14,   min: 0, max: 32, step: 1, label: 'posterize levels' },
-      grainAmount:    { value: 0.06, min: 0, max: 0.25, step: 0.005, label: 'shader grain' },
-      edgeBleed:      { value: 0.6,  min: 0, max: 2, step: 0.05, label: 'edge bleed' },
+    watercolor: folder({
+      watercolorEnabled: { value: true, label: 'enabled' },
+      washStrength: { value: 0.65, min: 0, max: 1, step: 0.01, label: 'wash strength' },
+      washRadius:   { value: 2.5,  min: 0.5, max: 12, step: 0.1, label: 'wash radius (px)' },
+      wetEdge:      { value: 1.4,  min: 0, max: 6, step: 0.05, label: 'wet edge' },
+      pigment:      { value: 0.10, min: 0, max: 0.5, step: 0.005, label: 'pigment variance' },
+      posterize:    { value: 18,   min: 0, max: 32, step: 1, label: 'posterize levels' },
+      grainAmount:  { value: 0.05, min: 0, max: 0.25, step: 0.005, label: 'shader grain' },
     }),
   })
 
@@ -39,13 +41,14 @@ export default function PostFx() {
         luminanceSmoothing={0.3}
         mipmapBlur
       />
-      {painterlyEnabled ? (
+      {watercolorEnabled ? (
         <Painterly
-          strokeStrength={strokeStrength}
-          strokeScale={strokeScale}
+          washStrength={washStrength}
+          washRadius={washRadius}
+          wetEdge={wetEdge}
+          pigment={pigment}
           posterize={posterize}
           grainAmount={grainAmount}
-          edgeBleed={edgeBleed}
         />
       ) : null}
     </EffectComposer>
