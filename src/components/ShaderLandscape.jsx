@@ -113,10 +113,14 @@ const BUFFER_A_FRAG = /* glsl */ `
     float trunkH = 4.5 * s;
     float trunkR = 0.05 * s;
     float trunk = sdCappedCylinder(q - vec3(0, trunkH * 0.5, 0), trunkR, trunkH * 0.5);
-    // Foliage as a tall ellipsoid centered ~70% up the trunk — pine teardrop.
+    // Foliage = ellipsoid lightly perturbed so the silhouette breaks into
+    // leafy clumps. Amplitude kept small so sphere-tracing still converges.
     vec3 fp = q - vec3(0.0, trunkH * 0.65, 0.0);
-    vec3 fr = vec3(1.1 * s, 1.8 * s, 1.1 * s);
-    float foliage = sdEllipsoid(fp, fr);
+    vec3 fr = vec3(1.1 * s, 1.75 * s, 1.1 * s);
+    float ellip = sdEllipsoid(fp, fr);
+    float lumps = (fbm(fp.xz * 3.0 + fp.y * 2.0) - 0.5) * 0.18
+                + (fbm(fp.xy * 7.0 + fp.z * 4.0) - 0.5) * 0.10;
+    float foliage = ellip - lumps * s;
     if (trunk < foliage) return vec2(trunk, MAT_TRUNK);
     return vec2(foliage, MAT_FOLIAGE);
   }
@@ -335,6 +339,29 @@ const IMAGE_FRAG = /* glsl */ `
     color.rgb = mix(color.rgb, layer.rgb, layer.a);
   }
 
+  // Procedural grass tufts — short vertical brush strokes layered on top of
+  // the painted ground. Avoids raymarching individual blades; the strokes
+  // taper with screen y so foreground reads denser than midground.
+  float grassTufts(vec2 uv, float matID) {
+    if (abs(matID - MAT_GROUND) > 0.5) return 0.0;
+    // Cell grid skewed tall so each cell holds a single thin vertical mark.
+    vec2 g = uv * vec2(180.0, 70.0);
+    vec2 ci = floor(g);
+    vec2 cf = fract(g);
+    float n = hash21(ci);
+    // Skip 35% of cells so the field has gaps.
+    if (n < 0.35) return 0.0;
+    // Each blade: wedge that's wide at base (cf.y=1, screen-down) and
+    // tapers toward the tip (cf.y=0, screen-up). x-jitter from cell hash.
+    float cx = (n - 0.5) * 0.8;
+    float dx = abs(cf.x - 0.5 - cx);
+    float baseShape = (1.0 - cf.y);                 // 1 at bottom of cell
+    float blade = step(dx, 0.18 * baseShape * baseShape);
+    // Perspective: stronger near bottom of frame, fade out toward horizon.
+    blade *= smoothstep(0.78, 0.20, uv.y);
+    return blade;
+  }
+
   void main() {
     initMaterials();
     vec2 uv = gl_FragCoord.xy / iResolution;
@@ -343,6 +370,22 @@ const IMAGE_FRAG = /* glsl */ `
     paintLayer(color, uv, MAT_GROUND);
     paintLayer(color, uv, MAT_BANK);
     paintLayer(color, uv, MAT_WATER);
+
+    // Grass tufts — applied after ground/bank/water so they sit on top of
+    // the meadow, but before trees so trunks/foliage occlude them.
+    float matHere = texture2D(tBufferA, uv).x;
+    float tuft = grassTufts(uv, matHere);
+    if (tuft > 0.5) {
+      // Two-tone stipple: dark base + lighter highlight in upper part.
+      vec3 grassDark  = vec3(0.18, 0.32, 0.10);
+      vec3 grassMid   = vec3(0.36, 0.50, 0.18);
+      // Cheap "tip lighter" by sampling a second pass of the cell coord.
+      vec2 g2 = uv * vec2(180.0, 70.0);
+      float tipMix = smoothstep(0.45, 0.0, fract(g2.y));
+      vec3 grassCol = mix(grassDark, grassMid, tipMix);
+      color.rgb = mix(color.rgb, grassCol, 0.85);
+    }
+
     paintLayer(color, uv, MAT_TRUNK);
     paintLayer(color, uv, MAT_FOLIAGE);
     gl_FragColor = color;
@@ -435,7 +478,16 @@ export default function ShaderLandscape() {
       m[1], m[5], m[9],
       m[2], m[6], m[10]
     )
-    setup.bufferAMat.uniforms.uCamPos.value.copy(camera.position)
+    // Pull the camera back along its forward axis so the framing is less
+    // zoomed-in than the path nodes were tuned for. Rotation is preserved,
+    // so look direction (and PathWalker's animation) stays unchanged.
+    const fwdX = -m[8], fwdY = -m[9], fwdZ = -m[10]
+    const PULLBACK = 1.2
+    setup.bufferAMat.uniforms.uCamPos.value.set(
+      camera.position.x - fwdX * PULLBACK,
+      camera.position.y - fwdY * PULLBACK,
+      camera.position.z - fwdZ * PULLBACK
+    )
     // focal = 1 / tan(fov/2). camera.fov is in degrees.
     setup.bufferAMat.uniforms.uFocal.value =
       1 / Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2)
