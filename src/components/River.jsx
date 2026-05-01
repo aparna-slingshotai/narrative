@@ -82,6 +82,7 @@ export default function River() {
       uFogColor: { value: new THREE.Color(fog.fogColor) },
       uFogNear: { value: fog.fogNear },
       uFogFar: { value: fog.fogFar },
+      uUvTile: { value: 6 }, // matches buildRibbonGeometry uvTile arg below
     }),
     []
   )
@@ -93,6 +94,7 @@ export default function River() {
       uFogColor: { value: new THREE.Color(fog.fogColor) },
       uFogNear: { value: fog.fogNear },
       uFogFar: { value: fog.fogFar },
+      uUvTile: { value: 1 },
     }),
     []
   )
