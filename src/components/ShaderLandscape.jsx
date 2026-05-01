@@ -125,9 +125,14 @@ const BUFFER_A_FRAG = /* glsl */ `
     vec3 fp = q - vec3(sway.x, trunkH * 0.65, sway.y);
     vec3 fr = vec3(1.1 * s, 1.75 * s, 1.1 * s);
     float ellip = sdEllipsoid(fp, fr);
+    // Shell-bound the noise: it only displaces points near the ellipsoid
+    // surface. Without this, far-away rays read as "inside" the perturbed
+    // surface, and the marcher reports phantom hits — producing the
+    // long vertical column that appeared above the tree.
+    float shell = 1.0 - smoothstep(0.0, 0.5, abs(ellip));
     float lumps = (fbm(fp.xz * 3.0 + fp.y * 2.0) - 0.5) * 0.18
                 + (fbm(fp.xy * 7.0 + fp.z * 4.0) - 0.5) * 0.10;
-    float foliage = ellip - lumps * s;
+    float foliage = ellip - lumps * s * shell;
     if (trunk < foliage) return vec2(trunk, MAT_TRUNK);
     return vec2(foliage, MAT_FOLIAGE);
   }
