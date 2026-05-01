@@ -79,8 +79,8 @@ export default function Ground({ color = '#3a6b1f', fogColor = '#bcd8ec', fogNea
     uFogColor: { value: new THREE.Color(fogColor) },
     uFogNear: { value: fogNear },
     uFogFar: { value: fogFar },
-    uHillHeight: { value: 0.5 },
-    uHillScale: { value: 0.18 },
+    uHillHeight: { value: 1.1 },
+    uHillScale: { value: 0.22 },
   }), [])
 
   useFrame(() => {

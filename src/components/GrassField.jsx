@@ -1,14 +1,16 @@
 import { useRef, useMemo } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
-import { grassVertexShader, grassFragmentShader, TRAIL_SIZE } from '../shaders/grass'
+import { grassVertexShader, grassFragmentShader, TRAIL_SIZE, MAX_RIVER_POINTS } from '../shaders/grass'
 import { useTouchTrail, TRAIL_LENGTH } from '../hooks/useTouch'
 import { useGrassControls, useWindControls, useFogControls } from '../hooks/useSceneControls'
-import { distanceToRiverSq, RIVER_WIDTH, RIVER_BANK_WIDTH } from '../scene/river'
+import { RIVER_POINTS, RIVER_WIDTH } from '../scene/river'
 
 const BLADE_COUNT = 32000
-const FIELD_WIDTH = 14
-const FIELD_DEPTH = 17
+// Tile size — wraps around the camera each frame so the visible area
+// always has dense grass, regardless of where the camera is.
+const FIELD_WIDTH = 18
+const FIELD_DEPTH = 18
 const BLADE_SEGMENTS = 6
 
 function createBladeGeometry() {
@@ -25,7 +27,6 @@ function createBladeGeometry() {
     const t = i / BLADE_SEGMENTS
     const w = THREE.MathUtils.lerp(baseWidth, tipWidth, Math.pow(t, 1.4))
     const y = t * height
-    // baked S-curve — slightly pronounced for natural arc
     const z = Math.sin(t * Math.PI * 0.5) * 0.12
     verts.push(-w, y, z)
     verts.push(w, y, z)
@@ -44,13 +45,23 @@ function createBladeGeometry() {
   return geo
 }
 
-// Pick a height tier with weighted distribution. Returns absolute height in meters.
 function sampleHeight() {
   const r = Math.random()
-  if (r < 0.5) return 0.18 + Math.random() * 0.18      // short: 0.18–0.36
-  if (r < 0.78) return 0.36 + Math.random() * 0.22     // medium: 0.36–0.58
-  if (r < 0.93) return 0.58 + Math.random() * 0.30     // tall: 0.58–0.88
-  return 0.88 + Math.random() * 0.55                    // very tall stalks: 0.88–1.43
+  if (r < 0.5) return 0.18 + Math.random() * 0.18
+  if (r < 0.78) return 0.36 + Math.random() * 0.22
+  if (r < 0.93) return 0.58 + Math.random() * 0.30
+  return 0.88 + Math.random() * 0.55
+}
+
+// Pad RIVER_POINTS to fixed shader array size; extra slots duplicate the
+// last point so any wrap-around segment is degenerate.
+function buildRiverUniformArray() {
+  const out = []
+  const last = RIVER_POINTS[RIVER_POINTS.length - 1]
+  for (let i = 0; i < MAX_RIVER_POINTS; i++) {
+    out.push((RIVER_POINTS[i] || last).clone())
+  }
+  return out
 }
 
 export default function GrassField() {
@@ -71,43 +82,20 @@ export default function GrassField() {
     const leans = new Float32Array(BLADE_COUNT)
     const tints = new Float32Array(BLADE_COUNT)
 
-    // Grass grows right up to (and just barely into) the water's edge so
-    // the bank doesn't read as a missing strip. Hard exclusion is now
-    // smaller than the water radius so a few blades poke out of the water
-    // line; the soft-fade is short.
-    const HARD_EXCLUSION = RIVER_WIDTH * 0.42
-    const SOFT_FADE = HARD_EXCLUSION + 0.3
-
-    let placed = 0
-    let attempts = 0
-    while (placed < BLADE_COUNT && attempts < BLADE_COUNT * 4) {
-      attempts++
-      const r = Math.random()
-      const x = (Math.random() - 0.5) * FIELD_WIDTH
-      // softer camera-side bias so mid-distance gets more density
-      const z = (1 - r * 0.55) * -FIELD_DEPTH + 2.5
-      const distSq = distanceToRiverSq(x, z)
-      const dist = Math.sqrt(distSq)
-      if (dist < HARD_EXCLUSION) continue
-      if (dist < SOFT_FADE) {
-        const t = (dist - HARD_EXCLUSION) / (SOFT_FADE - HARD_EXCLUSION) // 0 at water edge → 1 at full grass
-        // probability of acceptance grows quadratically with t
-        if (Math.random() > t * t) continue
-      }
-      offsets[placed * 3] = x
-      offsets[placed * 3 + 1] = 0
-      offsets[placed * 3 + 2] = z
-      heights[placed] = sampleHeight()
-      // slightly shorter blades near the bank — riparian transition
-      if (dist < SOFT_FADE) heights[placed] *= 0.6 + 0.4 * ((dist - HARD_EXCLUSION) / (SOFT_FADE - HARD_EXCLUSION))
-      widths[placed] = 0.7 + Math.random() * 0.9
-      phases[placed] = Math.random() * Math.PI * 2
-      rotations[placed] = Math.random() * Math.PI * 2
-      leans[placed] = (Math.random() - 0.5) * 0.5
-      tints[placed] = (Math.random() - 0.5) * 2
-      placed++
+    // Uniform distribution within a tile centered on origin. The shader
+    // wraps each blade around the camera at render time, so the tile
+    // floats with the player and river exclusion happens per-frame.
+    for (let i = 0; i < BLADE_COUNT; i++) {
+      offsets[i * 3] = (Math.random() - 0.5) * FIELD_WIDTH
+      offsets[i * 3 + 1] = 0
+      offsets[i * 3 + 2] = (Math.random() - 0.5) * FIELD_DEPTH
+      heights[i] = sampleHeight()
+      widths[i] = 0.7 + Math.random() * 0.9
+      phases[i] = Math.random() * Math.PI * 2
+      rotations[i] = Math.random() * Math.PI * 2
+      leans[i] = (Math.random() - 0.5) * 0.5
+      tints[i] = (Math.random() - 0.5) * 2
     }
-    for (let i = placed; i < BLADE_COUNT; i++) heights[i] = 0
 
     geo.setAttribute('offset', new THREE.InstancedBufferAttribute(offsets, 3))
     geo.setAttribute('heightScale', new THREE.InstancedBufferAttribute(heights, 1))
@@ -135,12 +123,17 @@ export default function GrassField() {
       uFogColor: { value: new THREE.Color('#bfd8e8') },
       uFogNear: { value: 8 },
       uFogFar: { value: 20 },
+      uFieldOffset: { value: new THREE.Vector2(0, 0) },
+      uFieldSize: { value: new THREE.Vector2(FIELD_WIDTH, FIELD_DEPTH) },
+      uRiverPoints: { value: buildRiverUniformArray() },
+      uRiverPointsCount: { value: RIVER_POINTS.length },
+      uRiverExclusionRadius: { value: RIVER_WIDTH * 0.42 },
     }
 
     return { geometry: geo, uniforms }
   }, [])
 
-  useFrame((_, delta) => {
+  useFrame((state, delta) => {
     uniforms.uTime.value += delta
     uniforms.uTouchRadius.value = grass.touchRadius
     uniforms.uTouchStrength.value = grass.touchStrength
@@ -154,6 +147,9 @@ export default function GrassField() {
     uniforms.uFogColor.value.set(fog.fogColor)
     uniforms.uFogNear.value = fog.fogNear
     uniforms.uFogFar.value = fog.fogFar
+
+    // Camera-following: re-center the grass tile on the camera each frame
+    uniforms.uFieldOffset.value.set(state.camera.position.x, state.camera.position.z)
 
     const data = touchRef.current
     const trailUniform = uniforms.uTrail.value
