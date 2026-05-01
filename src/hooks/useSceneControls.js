@@ -79,7 +79,7 @@ export function useGrassControls() {
     }),
     touch: folder({
       touchRadius: { value: 1.4, min: 0.3, max: 6, step: 0.1, label: 'radius' },
-      touchStrength: { value: 0.3, min: 0, max: 2, step: 0.02, label: 'strength' },
+      touchStrength: { value: 0.06, min: 0, max: 2, step: 0.02, label: 'strength' },
       touchHighlight: { value: 0.4, min: 0, max: 1.5, step: 0.05, label: 'highlight' },
       touchLerp: { value: 0.08, min: 0.01, max: 1, step: 0.01, label: 'response' },
     }),

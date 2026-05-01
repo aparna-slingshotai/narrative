@@ -6,8 +6,8 @@ import { useControls } from 'leva'
 export default function WhiteVignette() {
   const { enabled, intensity, falloff } = useControls('White Vignette', {
     enabled: { value: true },
-    intensity: { value: 0.25, min: 0, max: 1, step: 0.01 },
-    falloff: { value: 0.55, min: 0.1, max: 1, step: 0.01, label: 'inner radius' },
+    intensity: { value: 0.57, min: 0, max: 1, step: 0.01 },
+    falloff: { value: 0.73, min: 0.1, max: 1, step: 0.01, label: 'inner radius' },
   })
 
   if (!enabled || intensity === 0) return null

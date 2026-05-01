@@ -8,14 +8,14 @@ import { useControls, folder } from 'leva'
 // built on the first pointer/touch/key event and faded in.
 export default function AmbientAudio() {
   const ctrl = useControls('Ambient Audio', {
-    enabled: { value: true, label: 'enabled' },
-    volume: { value: 0.07, min: 0, max: 1, step: 0.01 },
+    enabled: { value: false, label: 'enabled' },
+    volume: { value: 0.40, min: 0, max: 1, step: 0.01 },
     breeze: folder({
-      windAmount: { value: 0.18, min: 0, max: 1, step: 0.01, label: 'wind' },
-      gustSpeed: { value: 0.07, min: 0.02, max: 1, step: 0.01, label: 'gust speed' },
+      windAmount: { value: 0.70, min: 0, max: 1, step: 0.01, label: 'wind' },
+      gustSpeed: { value: 0.18, min: 0.02, max: 1, step: 0.01, label: 'gust speed' },
       brightness: { value: 480, min: 100, max: 2000, step: 10, label: 'brightness (Hz)' },
     }),
-    bassAmount: { value: 0.12, min: 0, max: 1, step: 0.01, label: 'low hum' },
+    bassAmount: { value: 0.25, min: 0, max: 1, step: 0.01, label: 'low hum' },
   })
 
   const audioRef = useRef(null)
