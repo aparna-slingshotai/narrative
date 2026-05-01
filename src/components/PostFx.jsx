@@ -17,17 +17,17 @@ export default function PostFx() {
   } = useControls('Post FX', {
     enabled: { value: true },
     bloom: folder({
-      bloomIntensity: { value: 0.35, min: 0, max: 3, step: 0.05, label: 'intensity' },
-      bloomThreshold: { value: 0.95, min: 0, max: 1, step: 0.01, label: 'threshold' },
+      bloomIntensity: { value: 0.05, min: 0, max: 3, step: 0.05, label: 'intensity' },
+      bloomThreshold: { value: 0.41, min: 0, max: 1, step: 0.01, label: 'threshold' },
     }),
     watercolor: folder({
       watercolorEnabled: { value: true, label: 'enabled' },
-      washStrength: { value: 0.65, min: 0, max: 1, step: 0.01, label: 'wash strength' },
-      washRadius:   { value: 2.5,  min: 0.5, max: 12, step: 0.1, label: 'wash radius (px)' },
-      wetEdge:      { value: 1.4,  min: 0, max: 6, step: 0.05, label: 'wet edge' },
-      pigment:      { value: 0.10, min: 0, max: 0.5, step: 0.005, label: 'pigment variance' },
-      posterize:    { value: 18,   min: 0, max: 32, step: 1, label: 'posterize levels' },
-      grainAmount:  { value: 0.05, min: 0, max: 0.25, step: 0.005, label: 'shader grain' },
+      washStrength: { value: 0.00, min: 0, max: 1, step: 0.01, label: 'wash strength' },
+      washRadius:   { value: 0.5,  min: 0.5, max: 12, step: 0.1, label: 'wash radius (px)' },
+      wetEdge:      { value: 0.00, min: 0, max: 6, step: 0.05, label: 'wet edge' },
+      pigment:      { value: 0.00, min: 0, max: 0.5, step: 0.005, label: 'pigment variance' },
+      posterize:    { value: 32,   min: 0, max: 32, step: 1, label: 'posterize levels' },
+      grainAmount:  { value: 0.21, min: 0, max: 0.25, step: 0.005, label: 'shader grain' },
     }),
   })
 
