@@ -19,8 +19,8 @@ const noiseUrl = `url("data:image/svg+xml;utf8,${encodeURIComponent(noiseSvg)}")
 export default function PaperOverlay() {
   const { enabled, grain, warmth } = useControls('Paper Grain', {
     enabled: { value: true, label: 'enabled' },
-    grain:   { value: 0.18, min: 0, max: 0.6, step: 0.01, label: 'grain' },
-    warmth:  { value: 0.10, min: 0, max: 0.4, step: 0.01, label: 'warm tint' },
+    grain:   { value: 0.22, min: 0, max: 0.6, step: 0.01, label: 'grain' },
+    warmth:  { value: 0.12, min: 0, max: 0.4, step: 0.01, label: 'warm tint' },
   })
 
   if (!enabled) return null
