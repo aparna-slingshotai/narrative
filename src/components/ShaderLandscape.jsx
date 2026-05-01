@@ -119,7 +119,7 @@ const BUFFER_A_FRAG = /* glsl */ `
     vec2 sway = vec2(
       sin(iTime * 1.1 + phase),
       cos(iTime * 0.83 + phase + 1.0)
-    ) * 0.10 * s;
+    ) * 0.035 * s;
     // Foliage = ellipsoid lightly perturbed so the silhouette breaks into
     // leafy clumps. Amplitude kept small so sphere-tracing still converges.
     vec3 fp = q - vec3(sway.x, trunkH * 0.65, sway.y);
@@ -292,11 +292,11 @@ const IMAGE_FRAG = /* glsl */ `
     return 0.39894 * exp(-0.5 * x * x / (s * s)) / s;
   }
   vec4 calculateBlurredShape(float matID, vec2 uv, float k_s) {
-    const int mSize = 7;
-    const int kSize = 3;
-    float kernel[7];
+    const int mSize = 5;
+    const int kSize = 2;
+    float kernel[5];
     vec4 blurred = vec4(0.0);
-    float sigma = 0.008 * iResolution.x;
+    float sigma = 0.007 * iResolution.x;
     float Z = 0.0;
     for (int j = 0; j <= kSize; ++j) {
       float v = normpdf(float(j), sigma);
@@ -425,7 +425,9 @@ export default function ShaderLandscape() {
 
   // Resize render target + uniforms when the canvas size changes.
   useEffect(() => {
-    const dpr = Math.min(window.devicePixelRatio || 1, 1.5)
+    // Cap DPR aggressively — the 5×5 blur runs once per material per pixel,
+    // so doubling resolution doubles the cost of the most expensive stage.
+    const dpr = Math.min(window.devicePixelRatio || 1, 1.0)
     const w = Math.floor(size.width * dpr)
     const h = Math.floor(size.height * dpr)
     setup.bufferATarget.setSize(w, h)
