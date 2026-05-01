@@ -2,8 +2,7 @@ import { Canvas } from '@react-three/fiber'
 import { Suspense } from 'react'
 import * as THREE from 'three'
 import { Leva } from 'leva'
-import Scene from './components/Scene'
-import PostFx from './components/PostFx'
+import ShaderLandscape from './components/ShaderLandscape'
 import WhiteVignette from './components/WhiteVignette'
 import TextOverlay from './components/TextOverlay'
 import AmbientAudio from './components/AmbientAudio'
@@ -28,8 +27,7 @@ export default function App() {
           style={{ background: '#000' }}
         >
           <Suspense fallback={null}>
-            <Scene />
-            <PostFx />
+            <ShaderLandscape />
           </Suspense>
         </Canvas>
         <PaperOverlay />
