@@ -3,6 +3,8 @@ import { Suspense } from 'react'
 import * as THREE from 'three'
 import { Leva } from 'leva'
 import ShaderLandscape from './components/ShaderLandscape'
+import CameraRig from './components/CameraRig'
+import PathWalker from './components/PathWalker'
 import WhiteVignette from './components/WhiteVignette'
 import TextOverlay from './components/TextOverlay'
 import AmbientAudio from './components/AmbientAudio'
@@ -27,6 +29,8 @@ export default function App() {
           style={{ background: '#000' }}
         >
           <Suspense fallback={null}>
+            <CameraRig />
+            <PathWalker />
             <ShaderLandscape />
           </Suspense>
         </Canvas>

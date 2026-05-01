@@ -44,6 +44,9 @@ const BUFFER_A_FRAG = /* glsl */ `
   precision highp float;
   uniform vec2 iResolution;
   uniform float iTime;
+  uniform vec3 uCamPos;
+  uniform mat3 uCamMat;
+  uniform float uFocal;
 
   ${COMMON_GLSL}
 
@@ -193,10 +196,10 @@ const BUFFER_A_FRAG = /* glsl */ `
     initData();
     vec2 fragCoord = gl_FragCoord.xy;
     vec2 p = (fragCoord - 0.5 * iResolution) / iResolution.y;
-    vec3 ro = vec3(0.0, 2.4, 7.5);
-    vec3 ta = vec3(0.0, 2.0, -4.0);
-    mat3 M = cameraTransform(ro, ta, 0.0);
-    vec3 rd = normalize(M * vec3(p, 1.6)); // ~64° vfov for a friendlier framing
+    // Camera driven by R3F (PathWalker / CameraRig / OrbitControls).
+    // Three.js looks down -Z, so view-space ray is (p.x, p.y, -focal).
+    vec3 ro = uCamPos;
+    vec3 rd = normalize(uCamMat * vec3(p, -uFocal));
     gl_FragColor = renderScene(ro, rd);
   }
 `
@@ -353,6 +356,7 @@ const VERT = /* glsl */ `
 export default function ShaderLandscape() {
   const gl = useThree((s) => s.gl)
   const size = useThree((s) => s.size)
+  const camera = useThree((s) => s.camera)
 
   const { paused } = useControls('Shader Landscape', {
     paused: { value: false, label: 'pause' },
@@ -374,6 +378,9 @@ export default function ShaderLandscape() {
       uniforms: {
         iResolution: { value: new THREE.Vector2(1, 1) },
         iTime: { value: 0 },
+        uCamPos: { value: new THREE.Vector3() },
+        uCamMat: { value: new THREE.Matrix3() },
+        uFocal: { value: 1.5 },
       },
     })
     const imageMat = new THREE.ShaderMaterial({
@@ -418,6 +425,21 @@ export default function ShaderLandscape() {
       setup.bufferAMat.uniforms.iTime.value = state.clock.elapsedTime
       setup.imageMat.uniforms.iTime.value = state.clock.elapsedTime
     }
+
+    // Sync R3F camera (driven by PathWalker / OrbitControls) to the shader.
+    camera.updateMatrixWorld()
+    const m = camera.matrixWorld.elements
+    // mat3 = upper-left 3x3 of camera.matrixWorld (rotation only)
+    setup.bufferAMat.uniforms.uCamMat.value.set(
+      m[0], m[4], m[8],
+      m[1], m[5], m[9],
+      m[2], m[6], m[10]
+    )
+    setup.bufferAMat.uniforms.uCamPos.value.copy(camera.position)
+    // focal = 1 / tan(fov/2). camera.fov is in degrees.
+    setup.bufferAMat.uniforms.uFocal.value =
+      1 / Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2)
+
     gl.setRenderTarget(setup.bufferATarget)
     gl.render(setup.bufferAScene, setup.orthoCam)
     gl.setRenderTarget(null)
