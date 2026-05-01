@@ -35,7 +35,7 @@ export default function Sky() {
   })
 
   return (
-    <mesh scale={20} renderOrder={-1}>
+    <mesh scale={20} renderOrder={-1} userData-materialId={6}>
       <sphereGeometry args={[1, 48, 24]} />
       <shaderMaterial
         ref={matRef}

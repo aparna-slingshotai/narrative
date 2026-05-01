@@ -119,7 +119,7 @@ export default function Ground({ color = '#3a6b1f', fogColor = '#bcd8ec', fogNea
   })
 
   return (
-    <mesh rotation-x={-Math.PI / 2} position={[0, 0, 0]}>
+    <mesh rotation-x={-Math.PI / 2} position={[0, 0, 0]} userData-materialId={2}>
       <planeGeometry args={[60, 60, 80, 80]} />
       <shaderMaterial
         ref={matRef}

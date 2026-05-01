@@ -140,7 +140,7 @@ export default function River() {
   return (
     <>
       {/* bank sits slightly below water Y so water layers on top */}
-      <mesh geometry={bankGeo} position={[0, -0.005, 0]} renderOrder={0}>
+      <mesh geometry={bankGeo} position={[0, -0.005, 0]} renderOrder={0} userData-materialId={5}>
         <shaderMaterial
           ref={bankRef}
           vertexShader={waterVertexShader}
@@ -152,7 +152,7 @@ export default function River() {
           polygonOffsetUnits={-1}
         />
       </mesh>
-      <mesh geometry={waterGeo} renderOrder={1}>
+      <mesh geometry={waterGeo} renderOrder={1} userData-materialId={4}>
         <shaderMaterial
           ref={matRef}
           vertexShader={waterVertexShader}

@@ -169,7 +169,7 @@ export default function GrassField() {
   })
 
   return (
-    <instancedMesh ref={meshRef} args={[geometry, null, BLADE_COUNT]} frustumCulled={false}>
+    <instancedMesh ref={meshRef} args={[geometry, null, BLADE_COUNT]} frustumCulled={false} userData-materialId={3}>
       <shaderMaterial
         vertexShader={grassVertexShader}
         fragmentShader={grassFragmentShader}

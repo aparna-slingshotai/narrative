@@ -132,13 +132,14 @@ function Pine({ position, scale, rotationY, leanZ, foliageMaterial, trunkMateria
 
   return (
     <group ref={groupRef} position={position} rotation={[0, rotationY, leanZ]}>
-      <mesh position={[0, trunkHeight / 2, 0]} material={trunkMaterial}>
+      <mesh position={[0, trunkHeight / 2, 0]} material={trunkMaterial} userData-materialId={7}>
         <cylinderGeometry args={[trunkTopR, trunkBottomR, trunkHeight, 8]} />
       </mesh>
       <instancedMesh
         ref={meshRef}
         args={[baseFrondGeometry, foliageMaterial, frondMatrices.length]}
         frustumCulled={false}
+        userData-materialId={1}
       />
     </group>
   )
