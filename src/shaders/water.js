@@ -68,6 +68,13 @@ export const waterFragmentShader = /* glsl */ `
     float fade = smoothstep(0.95 - bankNoise, 0.65 - bankNoise, bankFade);
     color = mix(uWaterColor * 0.55, color, fade);
 
+    // soft fade at the start and end of the ribbon — dissolve into fog
+    // color so the river doesn't visibly stop at a hard horizontal line.
+    float endNoise = vnoise(vec2(vUv.x * 6.0, vUv.y * 3.0)) * 0.08;
+    float startEnd = smoothstep(0.0, 0.08 + endNoise, vUv.y) *
+                     smoothstep(1.0, 0.92 - endNoise, vUv.y);
+    color = mix(uFogColor, color, startEnd);
+
     float dist = length(vWorldPos - cameraPosition);
     float fog = smoothstep(uFogNear, uFogFar, dist);
     color = mix(color, uFogColor, fog);
@@ -124,6 +131,12 @@ export const bankFragmentShader = /* glsl */ `
     float edgeNoise = fbm(vec2(vUv.y * 8.0, vUv.x * 4.0)) * 0.25;
     float meld = smoothstep(0.55 + edgeNoise, 0.95 + edgeNoise, edge);
     color = mix(color, uGrassTint, meld);
+
+    // ribbon ends fade out so the bank doesn't stop at a hard line
+    float endNoise = vnoise(vec2(vUv.x * 6.0, vUv.y * 3.0)) * 0.08;
+    float startEnd = smoothstep(0.0, 0.08 + endNoise, vUv.y) *
+                     smoothstep(1.0, 0.92 - endNoise, vUv.y);
+    color = mix(uGrassTint, color, startEnd);
 
     float dist = length(vWorldPos - cameraPosition);
     float fog = smoothstep(uFogNear, uFogFar, dist);
