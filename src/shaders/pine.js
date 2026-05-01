@@ -37,6 +37,9 @@ export const frondVertexShader = /* glsl */ `
 `
 
 export const frondFragmentShader = /* glsl */ `
+  uniform sampler2D uBrush;
+  uniform float uHasBrush;
+  uniform float uAlphaThreshold;
   uniform vec3 uColorDark;
   uniform vec3 uColorMid;
   uniform vec3 uColorLight;
@@ -51,24 +54,37 @@ export const frondFragmentShader = /* glsl */ `
   float hash(vec2 p){ return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
 
   void main() {
+    // sample painted brush stamp; per-frond seed offsets the lookup so
+    // each frond samples a different region of the stamp (more variety)
+    float seedX = fract(vTint * 0.5 + 0.31);
+    float seedY = fract(vTint * 0.27 + 0.07);
+    vec2 brushUv = vec2(vUv.x + seedX * 0.0, vUv.y + seedY * 0.0);
+    vec4 stamp = vec4(1.0);
+    if (uHasBrush > 0.5) {
+      stamp = texture2D(uBrush, brushUv);
+      // discard pixels outside the painted strokes — frond ribbon
+      // breaks up into brush marks instead of reading as a solid leaf
+      if (stamp.a < uAlphaThreshold) discard;
+    }
+
     // along the frond: dark at root, mid in middle, light near tip
     vec3 color = mix(uColorDark, uColorMid, smoothstep(0.0, 0.55, vUv.x));
     color = mix(color, uColorLight, smoothstep(0.55, 1.0, vUv.x));
 
-    // per-frond hue jitter
     color.r += vTint * 0.05;
     color.g += vTint * 0.04;
     color.b -= vTint * 0.03;
 
-    // sketchy noise overlay
     vec2 nUv = floor(vWorldPos.xy * 70.0);
     color *= 0.93 + hash(nUv) * 0.10;
 
-    // soft side fade — frond reads as drawn rather than rectangular
-    float edge = 1.0 - smoothstep(0.65, 1.0, abs(vUv.y - 0.5) * 2.0);
-    color *= 0.85 + edge * 0.15;
+    if (uHasBrush > 0.5) {
+      // multiply by stroke luminance so darker brush regions pull color
+      // down — painted strokes read with their own value variation
+      float lum = dot(stamp.rgb, vec3(0.299, 0.587, 0.114));
+      color *= 0.55 + lum * 1.1;
+    }
 
-    // fog into sky
     float dist = length(vWorldPos - cameraPosition);
     float fog = smoothstep(uFogNear, uFogFar, dist);
     color = mix(color, uFogColor, fog);

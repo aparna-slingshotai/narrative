@@ -9,6 +9,7 @@ import {
 } from '../shaders/pine'
 import { useWindControls, useFogControls } from '../hooks/useSceneControls'
 import { useControls, folder } from 'leva'
+import { useScenePaint } from '../scene/paintAssets'
 
 const FRONDS_PER_TREE = 280
 const FROND_LAYERS = 10
@@ -158,6 +159,7 @@ const TREES = [
 export default function PineForest() {
   const wind = useWindControls()
   const fog = useFogControls()
+  const painted = useScenePaint()
 
   const colors = useControls('Pines', {
     foliage: folder({
@@ -171,6 +173,7 @@ export default function PineForest() {
       autumnLight: { value: '#f0d182', label: 'highlight' },
     }),
     trunkColor: { value: '#9a6242', label: 'trunk' },
+    leafBrushAlpha: { value: 0.15, min: 0, max: 0.6, step: 0.01, label: 'leaf brush cutoff' },
   })
 
   const greenMaterial = useMemo(
@@ -183,6 +186,9 @@ export default function PineForest() {
           uTime: { value: 0 },
           uWindAmp: { value: 0.04 },
           uWindSpeed: { value: 1.2 },
+          uBrush: { value: null },
+          uHasBrush: { value: 0 },
+          uAlphaThreshold: { value: 0.15 },
           uColorDark: { value: new THREE.Color('#3e6b3a') },
           uColorMid: { value: new THREE.Color('#7a9a4d') },
           uColorLight: { value: new THREE.Color('#b8cf85') },
@@ -203,6 +209,9 @@ export default function PineForest() {
           uTime: { value: 0 },
           uWindAmp: { value: 0.04 },
           uWindSpeed: { value: 1.2 },
+          uBrush: { value: null },
+          uHasBrush: { value: 0 },
+          uAlphaThreshold: { value: 0.15 },
           uColorDark: { value: new THREE.Color('#a17c2c') },
           uColorMid: { value: new THREE.Color('#d4a44a') },
           uColorLight: { value: new THREE.Color('#f0d182') },
@@ -241,9 +250,21 @@ export default function PineForest() {
     greenMaterial.uniforms.uColorDark.value.set(colors.colorDark)
     greenMaterial.uniforms.uColorMid.value.set(colors.colorMid)
     greenMaterial.uniforms.uColorLight.value.set(colors.colorLight)
+    greenMaterial.uniforms.uAlphaThreshold.value = colors.leafBrushAlpha
     autumnMaterial.uniforms.uColorDark.value.set(colors.autumnDark)
     autumnMaterial.uniforms.uColorMid.value.set(colors.autumnMid)
     autumnMaterial.uniforms.uColorLight.value.set(colors.autumnLight)
+    autumnMaterial.uniforms.uAlphaThreshold.value = colors.leafBrushAlpha
+    if (painted?.leaf) {
+      if (greenMaterial.uniforms.uBrush.value !== painted.leaf) {
+        greenMaterial.uniforms.uBrush.value = painted.leaf
+        greenMaterial.uniforms.uHasBrush.value = 1
+      }
+      if (autumnMaterial.uniforms.uBrush.value !== painted.leaf) {
+        autumnMaterial.uniforms.uBrush.value = painted.leaf
+        autumnMaterial.uniforms.uHasBrush.value = 1
+      }
+    }
     trunkMaterial.uniforms.uTrunkColor.value.set(colors.trunkColor)
     trunkMaterial.uniforms.uFogColor.value.set(fog.fogColor)
     trunkMaterial.uniforms.uFogNear.value = fog.fogNear

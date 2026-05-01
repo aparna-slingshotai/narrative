@@ -105,8 +105,10 @@ function paintGrassClump(W = 256, H = 384) {
   return commitTexture(cv)
 }
 
-// A single drooping foliage stroke for tree leaves — a wide curved arc.
-function paintLeafStroke(W = 384, H = 192) {
+// A drooping foliage stroke for tree leaves — many overlapping painted
+// arcs covering most of the canvas so each frond reads as a dense
+// brush-stroke cluster rather than a few isolated marks.
+function paintLeafStroke(W = 512, H = 256) {
   ensureBrushDefined()
   const cv = newCanvas(W, H)
   brush.load(cv)
@@ -115,20 +117,21 @@ function paintLeafStroke(W = 384, H = 192) {
   brush.seed(13)
   brush.clear('rgba(0,0,0,0)')
 
-  // 3-4 overlapping arcs forming the painted leaf cluster
-  const colors = ['#3a5e1c', '#4f7426', '#6a932f', '#8db640']
-  for (let i = 0; i < 4; i++) {
-    const baseY = H * (0.25 + i * 0.05)
-    const yEnd = baseY + 14 + Math.random() * 18
-    const startX = 18 + Math.random() * 12
-    const endX = W - 24 - Math.random() * 16
-    const cpY = baseY - 32 - Math.random() * 16 // arc up
-    brush.set('myBrush', colors[i % colors.length], 1.1 - i * 0.08)
+  const colors = ['#2f4a16', '#3a5e1c', '#4f7426', '#6a932f', '#8db640', '#a8c455']
+  const ROWS = 14
+  for (let i = 0; i < ROWS; i++) {
+    const t = i / (ROWS - 1)
+    const baseY = H * (0.10 + t * 0.85) + (Math.random() - 0.5) * 18
+    const yEnd = baseY + (Math.random() - 0.4) * 24
+    const startX = -10 + Math.random() * 30
+    const endX = W + 10 - Math.random() * 30
+    const cpY = baseY - (12 + Math.random() * 30)
+    brush.set('myBrush', colors[i % colors.length], 1.1 + Math.random() * 0.4)
     brush.spline([
       [startX, baseY],
-      [(startX + endX) * 0.5, cpY],
+      [(startX + endX) * 0.5 + (Math.random() - 0.5) * 30, cpY],
       [endX, yEnd],
-    ], 0.5)
+    ], 0.45 + Math.random() * 0.2)
   }
   brush.render()
 
