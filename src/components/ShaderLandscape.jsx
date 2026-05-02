@@ -216,7 +216,11 @@ const BUFFER_A_FRAG = /* glsl */ `
     // Three.js looks down -Z, so view-space ray is (p.x, p.y, -focal).
     vec3 ro = uCamPos;
     vec3 rd = normalize(uCamMat * vec3(p, -uFocal));
-    gl_FragColor = renderScene(ro, rd);
+    vec4 data = renderScene(ro, rd);
+    // Encode matID into 0..1 range for UnsignedByte storage. The Image
+    // pass multiplies back by 255 before comparing.
+    data.x /= 255.0;
+    gl_FragColor = data;
   }
 `
 
@@ -313,7 +317,9 @@ const IMAGE_FRAG = /* glsl */ `
       for (int j = -kSize; j <= kSize; ++j) {
         vec2 duv = vec2(float(i), float(j)) / iResolution;
         vec4 s = texture2D(tBufferA, uv + duv);
-        s.x = (abs(s.x - matID) < 0.5) ? (1.0 - step(k_s, s.z)) : 0.0;
+        // Decode matID from 0..1 byte storage back to 0..255 float.
+        float sid = s.x * 255.0;
+        s.x = (abs(sid - matID) < 0.5) ? (1.0 - step(k_s, s.z)) : 0.0;
         blurred += kernel[kSize + j] * kernel[kSize + i] * s;
       }
     }
@@ -396,7 +402,10 @@ export default function ShaderLandscape() {
     const bufferATarget = new THREE.WebGLRenderTarget(1, 1, {
       minFilter: THREE.NearestFilter,
       magFilter: THREE.NearestFilter,
-      type: THREE.FloatType,
+      // matID, diffuse, specular, shadow all fit in 8 bits — UnsignedByte
+      // is widely supported and avoids float-RT compatibility issues that
+      // showed up at large viewport sizes.
+      type: THREE.UnsignedByteType,
     })
 
     const bufferAMat = new THREE.ShaderMaterial({
@@ -433,8 +442,15 @@ export default function ShaderLandscape() {
     // Cap DPR aggressively — the 5×5 blur runs once per material per pixel,
     // so doubling resolution doubles the cost of the most expensive stage.
     const dpr = Math.min(window.devicePixelRatio || 1, 1.0)
-    const w = Math.floor(size.width * dpr)
-    const h = Math.floor(size.height * dpr)
+    // Hard cap the buffer's longer side. The watercolor blur smooths out
+    // any visible aliasing below 1280, and large render targets blow out
+    // mobile GPUs (and on desktop landscape they multiply blur cost).
+    const MAX_DIM = 1280
+    const rawW = size.width * dpr
+    const rawH = size.height * dpr
+    const scale = Math.min(1, MAX_DIM / Math.max(rawW, rawH))
+    const w = Math.max(1, Math.floor(rawW * scale))
+    const h = Math.max(1, Math.floor(rawH * scale))
     setup.bufferATarget.setSize(w, h)
     setup.bufferAMat.uniforms.iResolution.value.set(w, h)
     setup.imageMat.uniforms.iResolution.value.set(w, h)
