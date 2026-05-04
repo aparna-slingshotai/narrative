@@ -55,12 +55,12 @@ export default function River() {
 
   const ctrl = useControls('River', {
     enabled:    { value: true, label: 'enabled' },
-    waterColor: { value: '#7ea8cf', label: 'water' },
-    highlight:  { value: '#e8f0f8', label: 'highlight' },
-    waterShadow:{ value: '#4d7ba0', label: 'water shadow' },
-    bankColor:  { value: '#9ea66c', label: 'bank' },     // green-tinted, blends with grass
-    bankWarm:   { value: '#b8a978', label: 'bank warm' },
-    grassTint:  { value: '#7c9648', label: 'bank grass tint' },
+    waterColor: { value: '#6c7fc9', label: 'water' },
+    highlight:  { value: '#e8eaf5', label: 'highlight' },
+    waterShadow:{ value: '#3d4d8f', label: 'water shadow' },
+    bankColor:  { value: '#9c95c8', label: 'bank' },     // lavender-tinted, blends with grass
+    bankWarm:   { value: '#a89cc4', label: 'bank warm' },
+    grassTint:  { value: '#7d8fc9', label: 'bank grass tint' },
     width:      { value: 1.5, min: 0.4, max: 5, step: 0.1 },
     bankWidth:  { value: 0.18, min: 0,   max: 3, step: 0.02, label: 'bank width' },
   })

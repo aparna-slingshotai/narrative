@@ -63,7 +63,7 @@ export function usePathControls() {
 
 export function useFogControls() {
   return useControls('Atmosphere', {
-    fogColor: { value: '#f4ebd9', label: 'fog tint' },
+    fogColor: { value: '#ece5f5', label: 'fog tint' },
     fogNear: { value: 7, min: 1, max: 40, step: 0.5, label: 'fog near' },
     fogFar: { value: 20, min: 5, max: 60, step: 0.5, label: 'fog far' },
   })
@@ -72,9 +72,9 @@ export function useFogControls() {
 export function useGrassControls() {
   return useControls('Grass', {
     gradient: folder({
-      colorBase: { value: '#5a7838', label: 'base' },
-      colorMid: { value: '#88a854', label: 'mid' },
-      colorTip: { value: '#c8d68a', label: 'tip' },
+      colorBase: { value: '#3d3578', label: 'base' },
+      colorMid: { value: '#5d4f9c', label: 'mid' },
+      colorTip: { value: '#c9bce4', label: 'tip' },
       tintAmount: { value: 0.9, min: 0, max: 2, step: 0.05, label: 'tint variance' },
     }),
     touch: folder({

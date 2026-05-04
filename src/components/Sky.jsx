@@ -8,8 +8,8 @@ export default function Sky() {
   const matRef = useRef()
 
   const { paperColor, scribbleColor, cloudDensity, cloudSpeed } = useControls('Sky', {
-    paperColor:    { value: '#f4ebd9', label: 'paper' },
-    scribbleColor: { value: '#9bb8d4', label: 'scribbles' },
+    paperColor:    { value: '#ece5f5', label: 'paper' },
+    scribbleColor: { value: '#a99cd4', label: 'scribbles' },
     clouds: folder({
       cloudDensity: { value: 0.65, min: 0, max: 1, step: 0.01, label: 'density' },
       cloudSpeed:   { value: 0.6,  min: 0, max: 5, step: 0.1, label: 'speed' },

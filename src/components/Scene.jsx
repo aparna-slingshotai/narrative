@@ -10,7 +10,7 @@ import { useFogControls, usePathControls } from '../hooks/useSceneControls'
 
 export default function Scene() {
   const { groundColor } = useControls('Ground', {
-    groundColor: { value: '#7c9648', label: 'color' },
+    groundColor: { value: '#5d4f9c', label: 'color' },
   })
   const fog = useFogControls()
   usePathControls()
@@ -20,8 +20,8 @@ export default function Scene() {
       <CameraRig />
       <PathWalker />
       <ambientLight intensity={1.0} />
-      <directionalLight position={[5, 8, 3]} intensity={0.7} color="#fff2d0" />
-      <hemisphereLight args={['#f4ebd9', '#7c9648', 0.5]} />
+      <directionalLight position={[5, 8, 3]} intensity={0.7} color="#e8eafc" />
+      <hemisphereLight args={['#ece5f5', '#4a3d8f', 0.5]} />
 
       <Sky />
       <Ground color={groundColor} fogColor={fog.fogColor} fogNear={fog.fogNear} fogFar={fog.fogFar} />

@@ -87,13 +87,13 @@ const groundFragmentShader = /* glsl */ `
   }
 `
 
-export default function Ground({ color = '#3a6b1f', fogColor = '#bcd8ec', fogNear = 6, fogFar = 18 }) {
+export default function Ground({ color = '#4a3d8f', fogColor = '#ece5f5', fogNear = 6, fogFar = 18 }) {
   const matRef = useRef()
   const painted = useScenePaint()
 
   const uniforms = useMemo(() => ({
     uColor: { value: new THREE.Color(color) },
-    uShadowColor: { value: new THREE.Color('#1f3d12') },
+    uShadowColor: { value: new THREE.Color('#2e2861') },
     uFogColor: { value: new THREE.Color(fogColor) },
     uFogNear: { value: fogNear },
     uFogFar: { value: fogFar },
