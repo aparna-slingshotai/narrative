@@ -75,10 +75,13 @@ export const path = {
       ],
     },
 
-    // 6. Horizon — final view, looking back across the whole meadow
+    // 6. Horizon — final view, low over the river looking downstream.
+    // idlePan slowly sweeps the lookAt yaw so the camera glides along
+    // the river's bend after arrival.
     horizon: {
-      position: [0.5, 1.8, 0.5],
-      lookAt:   [-1, 2.2, 6],
+      position: [-2.0, 1.3, 1.5],
+      lookAt:   [3.5, 1.0, -8],
+      idlePan: { axis: 'y', amplitudeRad: 0.22, periodSec: 16 },
       headerText: 'Carry only what\nfeels light.',
       choices: [
         { icon: 'restart_alt', text: 'Begin again', nextId: 'arrival', duration: 6 },

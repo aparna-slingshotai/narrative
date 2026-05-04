@@ -111,10 +111,12 @@ const frostedIconStyle = {
 }
 
 export default function TextOverlay() {
-  const { frosted, showHeader } = useControls('Text Style', {
+  // Diagnostic: force solid + showHeader. Reverts once breathing source found.
+  const { showHeader } = useControls('Text Style', {
     showHeader: { value: true, label: 'show header' },
-    frosted: { value: true, label: 'frosted glass' },
+    frosted: { value: false, label: 'frosted glass' },
   })
+  const frosted = false
 
   const currentNodeId = useSceneStore((s) => s.currentNodeId)
   const isWalking = useSceneStore((s) => s.isWalking)

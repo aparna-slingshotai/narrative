@@ -103,6 +103,36 @@ export default function PathWalker() {
       // idle — snap to current node so leva edits show live
       tmpPos.fromArray(currentNode.position)
       tmpLook.fromArray(currentNode.lookAt)
+
+      // Optional idlePan: sweep the lookAt around the chosen axis so the
+      // camera glides slowly while the user reads. Used by the river-pan
+      // ending. Sinusoidal so it eases at endpoints — no jolts.
+      const pan = currentNode.idlePan
+      if (pan) {
+        const amp = pan.amplitudeRad ?? 0.2
+        const period = pan.periodSec ?? 14
+        const phase = (clockNow / period) * Math.PI * 2
+        const offset = Math.sin(phase) * amp
+        const dx = tmpLook.x - tmpPos.x
+        const dy = tmpLook.y - tmpPos.y
+        const dz = tmpLook.z - tmpPos.z
+        if (pan.axis === 'y' || !pan.axis) {
+          const c = Math.cos(offset), s2 = Math.sin(offset)
+          tmpLook.set(
+            tmpPos.x + c * dx + s2 * dz,
+            tmpLook.y,
+            tmpPos.z - s2 * dx + c * dz
+          )
+        } else if (pan.axis === 'x') {
+          const c = Math.cos(offset), s2 = Math.sin(offset)
+          tmpLook.set(
+            tmpLook.x,
+            tmpPos.y + c * dy - s2 * dz,
+            tmpPos.z + s2 * dy + c * dz
+          )
+        }
+      }
+
       camera.position.copy(tmpPos)
       camera.lookAt(tmpLook)
     }
