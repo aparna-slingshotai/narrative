@@ -16,7 +16,7 @@ import { TouchProvider } from './hooks/useTouch'
 export default function App() {
   return (
     <>
-      <Leva collapsed titleBar={{ title: 'Scene Controls' }} />
+      <Leva hidden />
       <TouchProvider>
         <Canvas
           camera={{ position: [0, 3, 7], fov: 40, near: 0.1, far: 50 }}
