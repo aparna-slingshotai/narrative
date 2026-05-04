@@ -28,11 +28,10 @@ const headerStyle = {
   fontFamily: 'Georgia, "Times New Roman", "DM Serif Display", serif',
   fontSize: 26,
   fontWeight: 400,
-  color: 'white',
+  color: '#222',
   textAlign: 'center',
   lineHeight: 1.1,
   margin: 0,
-  textShadow: '0 2px 10px rgba(0,0,0,0.3)',
   letterSpacing: '-0.005em',
   transition: 'opacity 0.4s ease',
 }
